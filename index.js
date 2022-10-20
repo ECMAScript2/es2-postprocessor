@@ -4,9 +4,15 @@ const esprima    = require( 'esprima'    );
 const estraverse = require( 'estraverse' );
 
 const escodegen = (function(){
-    const ast = esprima.parse( require( 'fs' ).readFileSync( __dirname + '/node_modules/escodegen/escodegen.js' ).toString() );
-
+    const pathElements = __dirname.split( '\\' ).join( '/' ).split( '/' );
     var checkopoint = 0;
+
+    if( pathElements[ pathElements.length - 2 ] === 'node_modules' ){
+        pathElements.pop();
+    } else {
+        pathElements.push( 'node_modules' );
+    };
+    const ast = esprima.parse( require( 'fs' ).readFileSync( pathElements.join( '/' ) + '/escodegen/escodegen.js' ).toString() );
 
     estraverse.traverse(
         ast,
