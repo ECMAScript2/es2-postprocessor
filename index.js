@@ -52,8 +52,8 @@ function process( source, _options ){
     const minOperaVersion = options.minOperaVersion || 7;
 
     // 構文の制限
-    const CANUSE_MOST_ES3_SYNTAXES      = 5.5 <= minIEVersion;
-    const CANUSE_BREAK_IN_LABELED_BLOCK = 8   <= minOperaVersion;
+    const CANUSE_MOST_ES3_SYNTAXES       = 5.5 <= minIEVersion;
+    const CANUSE_LABELED_STATEMENT_BLOCK = 8   <= minOperaVersion;
 
     // RegExp の制限
 
@@ -68,6 +68,28 @@ function process( source, _options ){
         ast,
         {
             enter : function( astNode, parent ){
+                var leavelist = this.__leavelist, pointer = 0, inLoopOrSwitch;
+
+                // console.dir(this.__leavelist)
+
+                function getParentASTNode(){
+                    ++pointer;
+                    return leavelist &&
+                           leavelist[ leavelist.length - pointer ] &&
+                           leavelist[ leavelist.length - pointer ].node;
+                };
+
+                function relaceASTNode( parent, oldNode, newNode ){
+                    for( var key in parent ){
+                        if( Array.isArray( parent[ key ] ) && 0 <= parent[ key ].indexOf( oldNode ) ){
+                            parent[ key ].splice( parent[ key ].indexOf( oldNode ), 1, newNode );
+                            return;
+                        };
+                    };
+                    console.dir(parent);
+                    throw "置換に失敗!";
+                };
+
                 if( !CANUSE_MOST_ES3_SYNTAXES ){
                     if( astNode.type === esprima.Syntax.BinaryExpression ){
                         switch( astNode.operator ){
@@ -83,27 +105,80 @@ function process( source, _options ){
                         throw 'throw を使用しています！';
                     };
                 };
-                if( !CANUSE_BREAK_IN_LABELED_BLOCK ){
-                    if( astNode.type === esprima.Syntax.LabeledStatement && astNode.label.name === 'c' ){
-                        console.log('Label!! statement ' + astNode.label.name);
+                if( !CANUSE_LABELED_STATEMENT_BLOCK ){
+                    if( astNode.type === esprima.Syntax.LabeledStatement ){
+                        // console.log('Label!! statement ' + astNode.label.name);
                         // console.log(parent)
                         // AST ツリーの書き替え
-                        ( parent.body || parent.consequent ).splice(
-                            ( parent.body || parent.consequent ).indexOf( astNode ),
-                            1,
-                            {
-                                type : esprima.Syntax.DoWhileStatement,
-                                body : astNode.body,
-                                test : { type : esprima.Syntax.Literal, value : false, raw : '!1' },
-                                _old : astNode.label.name
-                            }
-                        );
-                        console.dir(parent)
+                        astNode.type = esprima.Syntax.DoWhileStatement,
+                        astNode.test = { type : esprima.Syntax.Literal, value : false, raw : '!1' },
+                        astNode._old = astNode.label.name;
+                        delete astNode.label;
+                        // console.dir(parent)
                     };
-                    if( astNode.type === esprima.Syntax.BreakStatement && astNode.label && astNode.label.name === 'c' ){
-                        // TODO 祖先の ._old と一致しなければエラー
+                    if( astNode.type === esprima.Syntax.BreakStatement && astNode.label ){
                         // AST ツリーの書き替え
-                        astNode.label = null;
+                        
+                        while( parent = getParentASTNode() ){
+                            if( parent._old && parent._old !== astNode.label.name ){
+                                throw "ラベル付きステートメントの入れ子は非サポートです!"
+                            };
+                            switch( parent.type ){
+                                case esprima.Syntax.ForInStatement  : // for( in )
+                                case esprima.Syntax.ForOfStatement  : // for( of )
+                                case esprima.Syntax.ForStatement    : // for( ;; )
+                                case esprima.Syntax.WhileStatement  : // while()
+                                case esprima.Syntax.SwitchStatement :
+                                    inLoopOrSwitch = true;
+                                    break;
+                                case esprima.Syntax.FunctionExpression :
+                                    if( parent._old === astNode.label.name ){
+                                        // return へ書き替え
+                                        astNode.type = esprima.Syntax.ReturnStatement;
+                                        astNode.argument = null;
+                                        delete astNode.label;
+                                        return;
+                                    };
+                                    throw "複雑なラベル付きステートメントの書き換えは非サポートです!(" + astNode.label.name + ":{ function(){} }"
+                                case esprima.Syntax.DoWhileStatement :
+                                    if( parent._old === astNode.label.name ){
+                                        if( inLoopOrSwitch ){
+                                            var doWhileToFunc = parent;
+                                            delete doWhileToFunc.test;
+                                            doWhileToFunc.type       = esprima.Syntax.FunctionExpression;
+                                            doWhileToFunc.id         = null;
+                                            doWhileToFunc.params     = [];
+                                            doWhileToFunc.generator  = doWhileToFunc.expression = doWhileToFunc.async = false;
+                                            if( doWhileToFunc.body.type !== esprima.Syntax.BlockStatement ){
+                                                doWhileToFunc.body = { type : esprima.Syntax.BlockStatement, body : doWhileToFunc.body };
+                                            };
+                                            parent = getParentASTNode();
+                                            // do{ break; }while(false)
+                                            // (function(){ return; })()
+                                            relaceASTNode(
+                                                parent,
+                                                doWhileToFunc,
+                                                {
+                                                    type       : esprima.Syntax.ExpressionStatement,
+                                                    expression : {
+                                                        type      : esprima.Syntax.CallExpression,
+                                                        arguments : [],
+                                                        callee    : doWhileToFunc
+                                                    }
+                                                }
+                                            );
+                                            // console.dir(doWhileToFunc)
+                                            // return へ書き替え
+                                            astNode.type = esprima.Syntax.ReturnStatement;
+                                            astNode.argument = null;
+                                        };
+                                        delete astNode.label;
+                                        return;
+                                    };
+                                    inLoopOrSwitch = true;
+                                    break;
+                            };
+                        };
                     };
                 };
 
