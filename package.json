@@ -1,6 +1,6 @@
 {
   "name": "es2-postprocessor",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Post processor for legacy DHTML browsers.",
   "main": "index.js",
   "scripts": {
