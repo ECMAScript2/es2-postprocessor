@@ -62,6 +62,9 @@ function process( source, _options ){
     const CANUSE_NUMERIC_STRING_FOR_OBJECT_LITERAL_PROPERTY = 7.5 <= minOperaVersion;
     const CANUSE_EMPTY_STRING_FOR_OBJECT_LITERAL_PROPERTY   = 7.5 <= minOperaVersion;
 
+    const AST_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
+    const AST_IDENTIFER_ARGUMENTS = { type : esprima.Syntax.Identifier, name : 'arguments' };
+
     const ast = esprima.parse( source );
 
     estraverse.traverse(
@@ -80,10 +83,15 @@ function process( source, _options ){
                 };
 
                 function relaceASTNode( parent, oldNode, newNode ){
-                    for( var key in parent ){
-                        if( Array.isArray( parent[ key ] ) && 0 <= parent[ key ].indexOf( oldNode ) ){
-                            parent[ key ].splice( parent[ key ].indexOf( oldNode ), 1, newNode );
-                            return;
+                    var key , index;
+
+                    for( key in parent ){
+                        if( Array.isArray( parent[ key ] )){
+                            index = parent[ key ].indexOf( oldNode );
+                            if( 0 <= index ){
+                                parent[ key ].splice( index, 1, newNode );
+                                return;
+                            };
                         };
                     };
                     console.dir(parent);
@@ -118,14 +126,13 @@ function process( source, _options ){
                     };
                     if( astNode.type === esprima.Syntax.BreakStatement && astNode.label ){
                         // AST ツリーの書き替え
-                        
                         while( parent = getParentASTNode() ){
                             if( parent._old && parent._old !== astNode.label.name ){
-                                throw "ラベル付きステートメントの入れ子は非サポートです!"
+                                throw "ラベル付きステートメントの入れ子は非サポートです!" // (function(){ do{ return; }while() })()
                             };
                             switch( parent.type ){
                                 case esprima.Syntax.ForInStatement  : // for( in )
-                                case esprima.Syntax.ForOfStatement  : // for( of )
+                                // case esprima.Syntax.ForOfStatement  : // for( of )
                                 case esprima.Syntax.ForStatement    : // for( ;; )
                                 case esprima.Syntax.WhileStatement  : // while()
                                 case esprima.Syntax.SwitchStatement :
@@ -147,11 +154,30 @@ function process( source, _options ){
                                             delete doWhileToFunc.test;
                                             doWhileToFunc.type       = esprima.Syntax.FunctionExpression;
                                             doWhileToFunc.id         = null;
-                                            doWhileToFunc.params     = [];
                                             doWhileToFunc.generator  = doWhileToFunc.expression = doWhileToFunc.async = false;
                                             if( doWhileToFunc.body.type !== esprima.Syntax.BlockStatement ){
                                                 doWhileToFunc.body = { type : esprima.Syntax.BlockStatement, body : doWhileToFunc.body };
                                             };
+                                            // 1. this, arguments キーワードを見つけたら、(function(_,$){})(this, arguments)
+                                            // 2. body 以下に (function(){}).call(this,) があった場合、その Call パラメータまでを書き換えて以下は探索しない
+                                            var isThisAndArgumentsFound = findThisAndArguments( doWhileToFunc.body );
+                                            if( isThisAndArgumentsFound ){
+                                                // 3. 短い未使用の Indentifer を求める
+                                                var variableOfThis      = isThisAndArgumentsFound % 1 && generateUndefinedVariableName( doWhileToFunc.body );
+                                                var variableOfArguments = isThisAndArgumentsFound % 2 && generateUndefinedVariableName( doWhileToFunc.body );
+                                                // 4. this, arguments を夫々に書き換える
+                                                replaceThisAndArguments( doWhileToFunc.body, variableOfThis || '_this', variableOfArguments || '_args' );
+                                            };
+                                            doWhileToFunc.params =
+                                                isThisAndArgumentsFound === 0
+                                                    ? [] :
+                                                isThisAndArgumentsFound === 1
+                                                    ? [ { type : esprima.Syntax.Identifier, name : variableOfThis || '_this' } ] :
+                                                isThisAndArgumentsFound === 2
+                                                    ? [ { type : esprima.Syntax.Identifier, name : variableOfArguments || '_args' } ]
+                                                    : [ { type : esprima.Syntax.Identifier, name : variableOfThis || '_this' },
+                                                        { type : esprima.Syntax.Identifier, name : variableOfArguments || '_args' } ];
+
                                             parent = getParentASTNode();
                                             // do{ break; }while(false)
                                             // (function(){ return; })()
@@ -162,8 +188,15 @@ function process( source, _options ){
                                                     type       : esprima.Syntax.ExpressionStatement,
                                                     expression : {
                                                         type      : esprima.Syntax.CallExpression,
-                                                        arguments : [],
-                                                        callee    : doWhileToFunc
+                                                        callee    : doWhileToFunc,
+                                                        arguments :
+                                                            isThisAndArgumentsFound === 0
+                                                                ? [] :
+                                                            isThisAndArgumentsFound === 1
+                                                                ? [ AST_IDENTIFER_THIS ] :
+                                                            isThisAndArgumentsFound === 2
+                                                                ? [ AST_IDENTIFER_ARGUMENTS ]
+                                                                : [ AST_IDENTIFER_THIS, AST_IDENTIFER_ARGUMENTS ]
                                                     }
                                                 }
                                             );
@@ -207,8 +240,6 @@ function process( source, _options ){
         }
     );
 
-    var lastIndex = 0;
-
     return escodegen.generate(
         ast,
             {
@@ -232,16 +263,6 @@ function process( source, _options ){
                     parentheses : false,
                     semicolons  : false
                 }
-            }
-        ).replace(
-            /\n/g,
-            function( newline, index, all ){
-                if( 400 < index - lastIndex ){
-                    lastIndex = index;
-                    return newline;
-                };
-                return 0 <= '();,:?{}[]"\''.indexOf( all.charAt( index - 1 ) ) ||
-                       0 <= '();,:?{}[]"\''.indexOf( all.charAt( index + 1 ) ) ? '' : ' ';
             }
         );
 };
@@ -270,6 +291,58 @@ process.gulp = function( _options ){
                 };
             };
             callback();
+        }
+    );
+};
+
+function findThisAndArguments( ast ){
+    var isThisFound      = 0;
+    var isArgumentsFound = 0;
+
+    estraverse.traverse(
+        ast,
+        {
+            enter : function( astNode, parent ){
+                if( astNode.type === esprima.Syntax.FunctionExpression || astNode.type === esprima.Syntax.FunctionDeclaration ){
+                    return estraverse.VisitorOption.Skip;
+                };
+                if( astNode.type === esprima.Syntax.ThisExpression ){
+                    isThisFound = 1;
+                };
+                if( astNode.type === esprima.Syntax.Identifier && astNode.type === 'argumnets' ){
+                    isArgumentsFound = 2;
+                };
+                if( isThisFound + isArgumentsFound === 3 ){
+                    return estraverse.VisitorOption.Break;
+                };
+            }
+        }
+    );
+    return isThisFound + isArgumentsFound;
+};
+
+function generateUndefinedVariableName(){
+
+};
+
+function replaceThisAndArguments( ast, varNameOfThis, varNameOfArguments ){
+    console.log('replaceThisAndArguments')
+    console.dir(ast)
+    estraverse.traverse(
+        ast,
+        {
+            enter : function( astNode, parent ){
+                if( astNode.type === esprima.Syntax.FunctionExpression || astNode.type === esprima.Syntax.FunctionDeclaration ){
+                    return estraverse.VisitorOption.Skip;
+                };
+                if( astNode.type === esprima.Syntax.ThisExpression ){
+                    astNode.type = esprima.Syntax.Identifier;
+                    astNode.name = varNameOfThis;
+                };
+                if( astNode.type === esprima.Syntax.Identifier && astNode.name === 'argumnets' ){
+                    astNode.name = varNameOfArguments;
+                };
+            }
         }
     );
 };
