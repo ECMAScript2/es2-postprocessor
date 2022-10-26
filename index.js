@@ -163,20 +163,20 @@ function process( source, _options ){
                                             var isThisAndArgumentsFound = findThisAndArguments( doWhileToFunc.body );
                                             if( isThisAndArgumentsFound ){
                                                 // 3. 短い未使用の Indentifer を求める
-                                                var variableOfThis      = isThisAndArgumentsFound % 1 && generateUndefinedVariableName( doWhileToFunc.body );
-                                                var variableOfArguments = isThisAndArgumentsFound % 2 && generateUndefinedVariableName( doWhileToFunc.body );
+                                                var variableOfThis      = ( isThisAndArgumentsFound & 1 ) && generateUndefinedVariableName( doWhileToFunc.body );
+                                                var variableOfArguments = ( isThisAndArgumentsFound & 2 ) && generateUndefinedVariableName( doWhileToFunc.body );
                                                 // 4. this, arguments を夫々に書き換える
-                                                replaceThisAndArguments( doWhileToFunc.body, variableOfThis || '_this', variableOfArguments || '_args' );
+                                                replaceThisAndArguments( doWhileToFunc.body, variableOfThis, variableOfArguments );
                                             };
                                             doWhileToFunc.params =
                                                 isThisAndArgumentsFound === 0
                                                     ? [] :
                                                 isThisAndArgumentsFound === 1
-                                                    ? [ { type : esprima.Syntax.Identifier, name : variableOfThis || '_this' } ] :
+                                                    ? [ { type : esprima.Syntax.Identifier, name : variableOfThis } ] :
                                                 isThisAndArgumentsFound === 2
-                                                    ? [ { type : esprima.Syntax.Identifier, name : variableOfArguments || '_args' } ]
-                                                    : [ { type : esprima.Syntax.Identifier, name : variableOfThis || '_this' },
-                                                        { type : esprima.Syntax.Identifier, name : variableOfArguments || '_args' } ];
+                                                    ? [ { type : esprima.Syntax.Identifier, name : variableOfArguments } ]
+                                                    : [ { type : esprima.Syntax.Identifier, name : variableOfThis },
+                                                        { type : esprima.Syntax.Identifier, name : variableOfArguments } ];
 
                                             parent = getParentASTNode();
                                             // do{ break; }while(false)
@@ -200,9 +200,7 @@ function process( source, _options ){
                                                     }
                                                 }
                                             );
-                                            // console.dir(doWhileToFunc)
-                                            // return へ書き替え
-                                            astNode.type = esprima.Syntax.ReturnStatement;
+                                            astNode.type = esprima.Syntax.ReturnStatement; // return <= break a:
                                             astNode.argument = null;
                                         };
                                         delete astNode.label;
@@ -321,13 +319,42 @@ function findThisAndArguments( ast ){
     return isThisFound + isArgumentsFound;
 };
 
-function generateUndefinedVariableName(){
+function generateUndefinedVariableName( ast ){
+    var variableNames = ast._variableNames || [];
+    var name = '', chr = 'a', index = 0, charCodeStart = chr.charCodeAt( 0 );
 
+    if( variableNames.length === 0 ){
+        estraverse.traverse(
+            ast,
+            {
+                enter : function( astNode, parent ){
+                    if( astNode.type === esprima.Syntax.BreakStatement ){
+                        return estraverse.VisitorOption.Skip;
+                    };
+                    if( astNode.type === esprima.Syntax.Identifier ){
+                        variableNames.push( astNode.name );
+                    };
+                }
+            }
+        );
+    };
+
+    while( 0 <= variableNames.indexOf( name + chr ) ){
+        ++index;
+        if( index % 26 === 0 ){
+            name += String.fromCharCode( charCodeStart + ( Math.floor( index / 26 ) % 26 ) );
+        } else {
+            chr = String.fromCharCode( charCodeStart + ( index % 26 ) );
+        };
+    };
+    name += chr;
+    ast._variableNames = variableNames;
+
+    variableNames.push( name );
+    return name;
 };
 
 function replaceThisAndArguments( ast, varNameOfThis, varNameOfArguments ){
-    console.log('replaceThisAndArguments')
-    console.dir(ast)
     estraverse.traverse(
         ast,
         {
