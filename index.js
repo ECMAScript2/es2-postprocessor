@@ -48,8 +48,8 @@ module.exports = process;
 
 function process( source, _options ){
     const options         = _options || {};
-    const minIEVersion    = options.minIEVersion    || 5;
-    const minOperaVersion = options.minOperaVersion || 7;
+    const minIEVersion    = options.minIEVersion    || 5.5;
+    const minOperaVersion = options.minOperaVersion || 8;
 
     // 構文の制限
     const CANUSE_MOST_ES3_SYNTAXES       = 5.5 <= minIEVersion;
@@ -307,7 +307,7 @@ function findThisAndArguments( ast ){
                 if( astNode.type === esprima.Syntax.ThisExpression ){
                     isThisFound = 1;
                 };
-                if( astNode.type === esprima.Syntax.Identifier && astNode.type === 'argumnets' ){
+                if( astNode.type === esprima.Syntax.Identifier && astNode.name === 'arguments' ){
                     isArgumentsFound = 2;
                 };
                 if( isThisFound + isArgumentsFound === 3 ){
@@ -366,7 +366,7 @@ function replaceThisAndArguments( ast, varNameOfThis, varNameOfArguments ){
                     astNode.type = esprima.Syntax.Identifier;
                     astNode.name = varNameOfThis;
                 };
-                if( astNode.type === esprima.Syntax.Identifier && astNode.name === 'argumnets' ){
+                if( astNode.type === esprima.Syntax.Identifier && astNode.name === 'arguments' ){
                     astNode.name = varNameOfArguments;
                 };
             }
