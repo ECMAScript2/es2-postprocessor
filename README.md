@@ -59,10 +59,10 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ## ES3 Syntax Support Table
 
-| Browser and Version               | Sample Code             | Internet Explorer 4~5 | Opera 7.0~7.20 | Opera 7.5x  |
-|:----------------------------------|:------------------------|:---------------------:|:--------------:|:-----------:|
-| Most ES3 Syntaxes                 | `instanceof, in, try~`  | ✕                    | ✔             | ✔          |
-| Labeled Statement Block           | `a: { break a; }`       | ✔                    | ✕(replace)    | ✕(replace) |
-| Numeric for Object Literal        | `{ 1 : 1 }`             | ✕(replace)           | ✕             | ✔          |
-| Numeric String for Object Literal | `{ "1" : 1 }`           | ✔                    | ✕             | ✔          |
-| Empty String for Object Literal   | `{ "" : "" }`           | ✔                    | ✕             | ✔          |
+| Browser and Version               | Sample Code             | Internet Explorer 4~5 | Opera 7.0~7.2x | Opera 7.5x  | Internet Explorer 5.5~, Opera 8+ |
+|:----------------------------------|:------------------------|:---------------------:|:--------------:|:-----------:|:--------------------------------:|
+| Most ES3 Syntaxes                 | `instanceof, in, try~`  | ✕                    | ✔             | ✔          | ✔                               |
+| Labeled Statement Block           | `a: { break a; }`       | ✔                    | ✕(replace)    | ✕(replace) | ✔                               |
+| Numeric for Object Literal        | `{ 1 : 1 }`             | ✕(replace)           | ✕             | ✔          | ✔                               |
+| Numeric String for Object Literal | `{ "1" : 1 }`           | ✔                    | ✕             | ✔          | ✔                               |
+| Empty String for Object Literal   | `{ "" : "" }`           | ✔                    | ✕             | ✔          | ✔                               |

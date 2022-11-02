@@ -1,5 +1,3 @@
-// https://kitak.hatenablog.jp/entry/2014/11/15/233649
-//   JSのASTを扱うライブラリをつかって、不要なeval呼び出しを除くコードを書いてみた
 const esprima    = require( 'esprima'    );
 const estraverse = require( 'estraverse' );
 
@@ -95,7 +93,7 @@ function process( source, _options ){
                         };
                     };
                     console.dir(parent);
-                    throw "置換に失敗!";
+                    throw new Error( "置換に失敗!" );
                 };
 
                 if( !CANUSE_MOST_ES3_SYNTAXES ){
@@ -103,14 +101,14 @@ function process( source, _options ){
                         switch( astNode.operator ){
                             case 'instanceof' :
                             case 'in' :
-                                throw astNode.operator + ' を使用しています！';
+                                throw new SyntaxError( astNode.operator + ' を使用しています！') ;
                         };
                     };
                     if( astNode.type === esprima.Syntax.TryStatement ){
-                        throw 'try ~ catch を使用しています！';
+                        throw new SyntaxError( 'try ~ catch を使用しています！' );
                     };
                     if( astNode.type === esprima.Syntax.ThrowStatement ){
-                        throw 'throw を使用しています！';
+                        throw new SyntaxError( 'throw を使用しています！' );
                     };
                 };
                 if( !CANUSE_LABELED_STATEMENT_BLOCK ){
@@ -128,7 +126,7 @@ function process( source, _options ){
                         // AST ツリーの書き替え
                         while( parent = getParentASTNode() ){
                             if( parent._old && parent._old !== astNode.label.name ){
-                                throw "ラベル付きステートメントの入れ子は非サポートです!" // (function(){ do{ return; }while() })()
+                                throw new SyntaxError( "ラベル付きステートメントの入れ子は非サポートです!" ); // (function(){ do{ return; }while() })()
                             };
                             switch( parent.type ){
                                 case esprima.Syntax.ForInStatement  : // for( in )
@@ -146,7 +144,7 @@ function process( source, _options ){
                                         delete astNode.label;
                                         return;
                                     };
-                                    throw "複雑なラベル付きステートメントの書き換えは非サポートです!(" + astNode.label.name + ":{ function(){} }"
+                                    throw new SyntaxError( "複雑なラベル付きステートメントの書き換えは非サポートです!(" + astNode.label.name + ":{ function(){} }");
                                 case esprima.Syntax.DoWhileStatement :
                                     if( parent._old === astNode.label.name ){
                                         if( inLoopOrSwitch ){
@@ -221,16 +219,16 @@ function process( source, _options ){
                                 astNode.key.value = '' + astNode.key.value;
                                 astNode.key.raw   = '"' + astNode.key.value + '"';
                             } else {
-                                throw 'Object Literal のプロパティに数値(' + astNode.key.value + ')が使われています！';
+                                throw new SyntaxError( 'Object Literal のプロパティに数値(' + astNode.key.value + ')が使われています！' );
                             };
                         };
                     } else if( '' + ( astNode.key.value - 0 ) === astNode.key.value ){
                         if( !CANUSE_NUMERIC_STRING_FOR_OBJECT_LITERAL_PROPERTY ){
-                            throw 'Object Literal のプロパティに数値文字列("' + astNode.key.value + '")が使われています！';
+                            throw new SyntaxError( 'Object Literal のプロパティに数値文字列("' + astNode.key.value + '")が使われています！' );
                         };
                     } else if( astNode.key.value === '' ){
                         if( !CANUSE_EMPTY_STRING_FOR_OBJECT_LITERAL_PROPERTY ){
-                            throw 'Object Literal のプロパティに空文字列("")が使われています！';
+                            throw new SyntaxError( 'Object Literal のプロパティに空文字列("")が使われています！' );
                         };
                     };
                 };
@@ -251,15 +249,15 @@ function process( source, _options ){
                     hexadecimal : true,
                     quotes      : "auto",
                     escapeless  : false,
-                    // compact: true,
-                    space       : '',
+                    compact     : true,
+                    /* space       : '',
                     indent      : {
                         style                  : '',
                         base                   : 0,
                         adjustMultilineComment : false
                     },
                     parentheses : false,
-                    semicolons  : false
+                    semicolons  : false */
                 }
             }
         );
@@ -282,7 +280,6 @@ process.gulp = function( _options ){
             if( file.extname === '.js' ){
                 try {
                     file.contents = Buffer.from( process( file.contents.toString( encoding ), _options ) );
-                    // require( 'fs' ).writeFileSync( __dirname + '/__output.js', file.contents.toString( encoding ) );
                     this.push( file );
                 } catch(O_o){
                     this.emit( 'error', new PluginError( pluginName, O_o ) );
