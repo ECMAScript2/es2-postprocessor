@@ -69,15 +69,12 @@ function process( source, _options ){
         ast,
         {
             enter : function( astNode, parent ){
-                var leavelist = this.__leavelist, pointer = 0, inLoopOrSwitch;
+                var parents = this.parents(), pointer = 0, inLoopOrSwitch;
 
                 // console.dir(this.__leavelist)
-
                 function getParentASTNode(){
                     ++pointer;
-                    return leavelist &&
-                           leavelist[ leavelist.length - pointer ] &&
-                           leavelist[ leavelist.length - pointer ].node;
+                    return parents[ parents.length - pointer ];
                 };
 
                 function relaceASTNode( parent, oldNode, newNode ){
