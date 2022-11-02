@@ -113,6 +113,18 @@ function process( source, _options ){
                         // console.log('Label!! statement ' + astNode.label.name);
                         // console.log(parent)
                         // AST ツリーの書き替え
+                        // continue 不可, ただし ループに出会ったら探索しない
+                        searchInconvenientASTNode(
+                            astNode, 'Labeled Statement は continue を含む為、書き替えできません！',
+                            [ esprima.Syntax.ContinueStatement ],
+                            [ esprima.Syntax.ForInStatement, esprima.Syntax.ForStatement, esprima.Syntax.WhileStatement ]
+                        );
+                        // break 不可, ただし ループ, switch に出会ったら探索しない
+                        searchInconvenientASTNode(
+                            astNode, 'Labeled Statement は break を含む為、書き替えできません！',
+                            [ { type : esprima.Syntax.BreakStatement, label : null } ],
+                            [ esprima.Syntax.ForInStatement, esprima.Syntax.ForStatement, esprima.Syntax.WhileStatement, esprima.Syntax.SwitchStatement ]
+                        );
                         astNode.type = esprima.Syntax.DoWhileStatement,
                         astNode.test = { type : esprima.Syntax.Literal, value : false, raw : '!1' },
                         astNode._old = astNode.label.name;
@@ -122,9 +134,6 @@ function process( source, _options ){
                     if( astNode.type === esprima.Syntax.BreakStatement && astNode.label ){
                         // AST ツリーの書き替え
                         while( parent = getParentASTNode() ){
-                            if( parent._old && parent._old !== astNode.label.name ){
-                                throw new SyntaxError( "ラベル付きステートメントの入れ子は非サポートです!" ); // (function(){ do{ return; }while() })()
-                            };
                             switch( parent.type ){
                                 case esprima.Syntax.ForInStatement  : // for( in )
                                 // case esprima.Syntax.ForOfStatement  : // for( of )
@@ -145,6 +154,12 @@ function process( source, _options ){
                                 case esprima.Syntax.DoWhileStatement :
                                     if( parent._old === astNode.label.name ){
                                         if( inLoopOrSwitch ){
+                                            // return 不可、但し、Function 以下は探索しない
+                                            searchInconvenientASTNode(
+                                                parent, 'Labeled Statement は return を含む為、書き替えできません！',
+                                                [ { type : esprima.Syntax.ReturnStatement, _old : undefined } ],
+                                                [ esprima.Syntax.FunctionDeclaration, esprima.Syntax.FunctionExpression ]
+                                            );
                                             var doWhileToFunc = parent;
                                             delete doWhileToFunc.test;
                                             doWhileToFunc.type       = esprima.Syntax.FunctionExpression;
@@ -153,7 +168,7 @@ function process( source, _options ){
                                             if( doWhileToFunc.body.type !== esprima.Syntax.BlockStatement ){
                                                 doWhileToFunc.body = { type : esprima.Syntax.BlockStatement, body : doWhileToFunc.body };
                                             };
-                                            // 1. this, arguments キーワードを見つけたら、(function(_,$){})(this, arguments)
+                                            // 1. this, arguments キーワードを見つけたら、(function(a,b){})(this, arguments)
                                             // 2. body 以下に (function(){}).call(this,) があった場合、その Call パラメータまでを書き換えて以下は探索しない
                                             var isThisAndArgumentsFound = findThisAndArguments( doWhileToFunc.body );
                                             if( isThisAndArgumentsFound ){
@@ -172,12 +187,10 @@ function process( source, _options ){
                                                     ? [ { type : esprima.Syntax.Identifier, name : variableOfArguments } ]
                                                     : [ { type : esprima.Syntax.Identifier, name : variableOfThis },
                                                         { type : esprima.Syntax.Identifier, name : variableOfArguments } ];
-
-                                            parent = getParentASTNode();
                                             // do{ break; }while(false)
                                             // (function(){ return; })()
                                             relaceASTNode(
-                                                parent,
+                                                getParentASTNode(),
                                                 doWhileToFunc,
                                                 {
                                                     type       : esprima.Syntax.ExpressionStatement,
@@ -366,4 +379,43 @@ function replaceThisAndArguments( ast, varNameOfThis, varNameOfArguments ){
             }
         }
     );
+};
+
+function searchInconvenientASTNode( ast, errorMessage, inconvenientMatches, skipMatches ){
+    estraverse.traverse(
+        ast,
+        {
+            enter : function( astNode, parent ){
+                if( matchASTNode( astNode, skipMatches ) ){
+                    return estraverse.VisitorOption.Skip;
+                };
+                if( matchASTNode( astNode, inconvenientMatches ) ){
+                    throw new SyntaxError( errorMessage );
+                };
+            }
+        }
+    );
+};
+
+function matchASTNode( astNode, matches ){
+    if( Array.isArray( matches ) ){
+        for( var i = 0, l = matches.length; i < l; ++i ){
+            if( _match( matches[ i ] ) ) return true;
+        };
+        return false;
+    } else {
+        return _match( matches );
+    };
+
+    function _match( astNodeTypeOrNode ){
+        if( typeof astNodeTypeOrNode === 'string' ){
+            return astNodeTypeOrNode === astNode.type;
+        };
+        for( var key in astNodeTypeOrNode ){
+            if( astNodeTypeOrNode[ key ] != astNode[ key ] ){
+                return false;
+            };
+        };
+        return true;
+    };
 };

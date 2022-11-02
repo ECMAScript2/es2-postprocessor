@@ -1,15 +1,17 @@
 const test = require('ava');
-const $ = require('../index.js');
+const e2pp = require('../index.js');
 
 const ie5_opr70 = {
     minIEVersion    : 5,
     minOperaVersion : 7
 };
 
-test('Labeled Statement', (t) => {
-    t.is($('a:{break a}', ie5_opr70), 'do{break;}while(!1);');
+test('Labeled Statement:do~while', (t) => {
+    t.is(e2pp('a:{break a}', ie5_opr70), 'do{break;}while(!1);');
+});
 
-    t.is($(`
+test('Labeled Statement:this+arguments', (t) => {
+    t.is(e2pp(`
     a:{
         if(this){
             for(;k<arguments.length;++k){
@@ -20,8 +22,10 @@ test('Labeled Statement', (t) => {
         }
     }
     `, ie5_opr70), '(function(a,b){if(a){for(;k<b.length;++k){do{return;}while(g);}}}(this,arguments));');
+});
 
-    t.is($(`
+test('Labeled Statement:this', (t) => {
+    t.is(e2pp(`
     a:{
         if(this){
             for(;k;++k){
@@ -32,8 +36,10 @@ test('Labeled Statement', (t) => {
         }
     }
     `, ie5_opr70), '(function(a){if(a){for(;k;++k){do{return;}while(g);}}}(this));');
+});
 
-    t.is($(`
+test('Labeled Statement:arguments', (t) => {
+    t.is(e2pp(`
     a:{
         if(arguments.length){
             for(;k<arguments.length;++k){
@@ -44,4 +50,36 @@ test('Labeled Statement', (t) => {
         }
     }
     `, ie5_opr70), '(function(a){if(a.length){for(;k<a.length;++k){do{return;}while(g);}}}(arguments));');
+});
+
+test('Labeled Statement:Nest', (t) => {
+    t.is(e2pp(`
+    a:{
+        b: {
+            break b;
+            break a;
+        }
+        break a;
+    }
+    `, ie5_opr70), '(function(){do{break;return;}while(!1);return;}());');
+
+    t.is(e2pp(`
+    a:{
+        b: {
+            break b;
+            while(c){d();};
+            break a;
+            (function(){})();
+        }
+        break a;
+        while(c){d();};
+        (function(){})();
+    }
+    `, ie5_opr70), '(function(){do{break;while(c){d();};return;(function(){}());}while(!1);return;while(c){d();};(function(){}());}());');
+});
+
+test('Labeled Statement:Error', (t) => {
+    t.throws(()=> e2pp('a:{continue}', ie5_opr70));
+    t.throws(()=> e2pp('a:{break}', ie5_opr70));
+    t.throws(()=> e2pp('a:{while(a){return}}', ie5_opr70));
 });
