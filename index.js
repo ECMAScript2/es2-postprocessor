@@ -50,8 +50,8 @@ function process( source, _options ){
     const minOperaVersion = options.minOperaVersion || 8;
 
     // 構文の制限
-    const CANUSE_MOST_ES3_SYNTAXES       = 5.5 <= minIEVersion;
-    const CANUSE_LABELED_STATEMENT_BLOCK = 8   <= minOperaVersion;
+    const CANUSE_MOST_ES3_SYNTAXES       = 5 <= minIEVersion;
+    const CANUSE_LABELED_STATEMENT_BLOCK = 8 <= minOperaVersion;
 
     // RegExp の制限
 
