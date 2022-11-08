@@ -110,13 +110,13 @@ function process( source, opt_options ){
                 if( !CANUSE_LABELED_STATEMENT_BLOCK ){
                     if( astNode.type === esprima.Syntax.LabeledStatement ){
                         // continue 不可, ただし ループに出会ったら探索しない
-                        searchInconvenientASTNode(
+                        findInconvenientASTNode(
                             astNode, 'Labeled Statement cannot be rewritten because it contains `continue`!',
                             [ esprima.Syntax.ContinueStatement ],
                             [ esprima.Syntax.ForInStatement, esprima.Syntax.ForStatement, esprima.Syntax.WhileStatement ]
                         );
                         // break 不可, ただし ループ, switch に出会ったら探索しない
-                        searchInconvenientASTNode(
+                        findInconvenientASTNode(
                             astNode, 'Labeled Statement cannot be rewritten because it contains a `break`!',
                             [ { type : esprima.Syntax.BreakStatement, label : null } ],
                             [ esprima.Syntax.ForInStatement, esprima.Syntax.ForStatement, esprima.Syntax.WhileStatement, esprima.Syntax.SwitchStatement ]
@@ -148,8 +148,8 @@ function process( source, opt_options ){
                                 case esprima.Syntax.DoWhileStatement :
                                     if( parent._old === astNode.label.name ){
                                         if( inLoopOrSwitch ){
-                                            // return 不可、但し、Function 以下は探索しない
-                                            searchInconvenientASTNode(
+                                            // return 不可、但し、function 以下は探索しない
+                                            findInconvenientASTNode(
                                                 parent, 'Labeled Statement cannot be rewritten because it contains a `return`!',
                                                 [ { type : esprima.Syntax.ReturnStatement, _old : undefined } ],
                                                 [ esprima.Syntax.FunctionDeclaration, esprima.Syntax.FunctionExpression ]
@@ -167,8 +167,8 @@ function process( source, opt_options ){
                                             var isThisAndArgumentsFound = findThisAndArguments( doWhileToFunc.body );
                                             if( isThisAndArgumentsFound ){
                                                 // 3. 短い未使用の Indentifer を求める
-                                                var variableOfThis      = ( isThisAndArgumentsFound & 1 ) && generateUndefinedVariableName( doWhileToFunc.body );
-                                                var variableOfArguments = ( isThisAndArgumentsFound & 2 ) && generateUndefinedVariableName( doWhileToFunc.body );
+                                                var variableOfThis      = ( isThisAndArgumentsFound & 1 ) && generateUnusedIdentifierName( doWhileToFunc.body );
+                                                var variableOfArguments = ( isThisAndArgumentsFound & 2 ) && generateUnusedIdentifierName( doWhileToFunc.body );
                                                 // 4. this, arguments を夫々に書き換える
                                                 replaceThisAndArguments( doWhileToFunc.body, variableOfThis, variableOfArguments );
                                             };
@@ -313,7 +313,7 @@ function findThisAndArguments( ast ){
     return isThisFound + isArgumentsFound;
 };
 
-function generateUndefinedVariableName( ast ){
+function generateUnusedIdentifierName( ast ){
     var variableNames = ast._variableNames || [];
     var name = '', chr = 'a', index = 0, charCodeStart = chr.charCodeAt( 0 );
 
@@ -368,41 +368,41 @@ function replaceThisAndArguments( ast, varNameOfThis, varNameOfArguments ){
     );
 };
 
-function searchInconvenientASTNode( ast, errorMessage, inconvenientMatches, skipMatches ){
+function findInconvenientASTNode( ast, errorMessage, inconvenientIfMatch, skipIfMatch ){
     estraverse.traverse(
         ast,
         {
             enter : function( astNode, parent ){
-                if( matchASTNode( astNode, skipMatches ) ){
+                if( testIfASTNodeMatches( astNode, skipIfMatch ) ){
                     return estraverse.VisitorOption.Skip;
                 };
-                if( matchASTNode( astNode, inconvenientMatches ) ){
+                if( testIfASTNodeMatches( astNode, inconvenientIfMatch ) ){
                     throw new SyntaxError( errorMessage );
                 };
             }
         }
     );
-};
 
-function matchASTNode( astNode, matches ){
-    if( Array.isArray( matches ) ){
-        for( var i = 0, l = matches.length; i < l; ++i ){
-            if( _match( matches[ i ] ) ) return true;
-        };
-        return false;
-    } else {
-        return _match( matches );
-    };
-
-    function _match( astNodeTypeOrNode ){
-        if( typeof astNodeTypeOrNode === 'string' ){
-            return astNodeTypeOrNode === astNode.type;
-        };
-        for( var key in astNodeTypeOrNode ){
-            if( astNodeTypeOrNode[ key ] != astNode[ key ] ){
-                return false;
+    function testIfASTNodeMatches( astNode, match ){
+        if( Array.isArray( match ) ){
+            for( var i = 0, l = match.length; i < l; ++i ){
+                if( isMatch( match[ i ] ) ) return true;
             };
+            return false;
+        } else {
+            return isMatch( match );
         };
-        return true;
+    
+        function isMatch( astNodeTypeOrNode ){
+            if( typeof astNodeTypeOrNode === 'string' ){
+                return astNodeTypeOrNode === astNode.type;
+            };
+            for( var key in astNodeTypeOrNode ){
+                if( astNodeTypeOrNode[ key ] != astNode[ key ] ){ // != , not !==
+                    return false;
+                };
+            };
+            return true;
+        };
     };
 };
