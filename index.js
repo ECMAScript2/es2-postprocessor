@@ -1,6 +1,7 @@
 const esprima    = require( 'esprima'    );
 const estraverse = require( 'estraverse' );
 
+/** @see README.md > Dynamic Rewriting `escodegen` */
 const escodegen = (function(){
     const pathElements = __dirname.split( '\\' ).join( '/' ).split( '/' );
     var checkopoint = 0;
@@ -35,9 +36,8 @@ const escodegen = (function(){
             }
         }
     );
-    // require('fs').writeFileSync('./__escodegen.js', require('escodegen').generate( ast ));
     if( checkopoint !== -1 ){
-        throw 'escodegen の書き換えに失敗しました！';
+        throw new Error( 'Rewrite `escodegen` failed!' );
     };
     return eval( '(function(){var exports={};' + require( 'escodegen' ).generate( ast ) + ';return exports;})()' );
 })();
@@ -71,14 +71,13 @@ function process( source, _options ){
             enter : function( astNode, parent ){
                 var parents = this.parents(), pointer = 0, inLoopOrSwitch;
 
-                // console.dir(this.__leavelist)
                 function getParentASTNode(){
                     ++pointer;
                     return parents[ parents.length - pointer ];
                 };
 
                 function relaceASTNode( parent, oldNode, newNode ){
-                    var key , index;
+                    var key, index;
 
                     for( key in parent ){
                         if( Array.isArray( parent[ key ] )){
@@ -90,7 +89,7 @@ function process( source, _options ){
                         };
                     };
                     console.dir(parent);
-                    throw new Error( "置換に失敗!" );
+                    throw new Error( 'Failed to replace AST Node!' );
                 };
 
                 if( !CANUSE_MOST_ES3_SYNTAXES ){
@@ -98,30 +97,27 @@ function process( source, _options ){
                         switch( astNode.operator ){
                             case 'instanceof' :
                             case 'in' :
-                                throw new SyntaxError( astNode.operator + ' を使用しています！') ;
+                                throw new SyntaxError( '`' + astNode.operator + '` operator uses!') ;
                         };
                     };
                     if( astNode.type === esprima.Syntax.TryStatement ){
-                        throw new SyntaxError( 'try ~ catch を使用しています！' );
+                        throw new SyntaxError( '`try ~ catch` syntax uses!' );
                     };
                     if( astNode.type === esprima.Syntax.ThrowStatement ){
-                        throw new SyntaxError( 'throw を使用しています！' );
+                        throw new SyntaxError( '`throw` syntax uses!' );
                     };
                 };
                 if( !CANUSE_LABELED_STATEMENT_BLOCK ){
                     if( astNode.type === esprima.Syntax.LabeledStatement ){
-                        // console.log('Label!! statement ' + astNode.label.name);
-                        // console.log(parent)
-                        // AST ツリーの書き替え
                         // continue 不可, ただし ループに出会ったら探索しない
                         searchInconvenientASTNode(
-                            astNode, 'Labeled Statement は continue を含む為、書き替えできません！',
+                            astNode, 'Labeled Statement cannot be rewritten because it contains `continue`!',
                             [ esprima.Syntax.ContinueStatement ],
                             [ esprima.Syntax.ForInStatement, esprima.Syntax.ForStatement, esprima.Syntax.WhileStatement ]
                         );
                         // break 不可, ただし ループ, switch に出会ったら探索しない
                         searchInconvenientASTNode(
-                            astNode, 'Labeled Statement は break を含む為、書き替えできません！',
+                            astNode, 'Labeled Statement cannot be rewritten because it contains a `break`!',
                             [ { type : esprima.Syntax.BreakStatement, label : null } ],
                             [ esprima.Syntax.ForInStatement, esprima.Syntax.ForStatement, esprima.Syntax.WhileStatement, esprima.Syntax.SwitchStatement ]
                         );
@@ -129,14 +125,12 @@ function process( source, _options ){
                         astNode.test = { type : esprima.Syntax.Literal, value : false, raw : '!1' },
                         astNode._old = astNode.label.name;
                         delete astNode.label;
-                        // console.dir(parent)
                     };
                     if( astNode.type === esprima.Syntax.BreakStatement && astNode.label ){
-                        // AST ツリーの書き替え
                         while( parent = getParentASTNode() ){
                             switch( parent.type ){
                                 case esprima.Syntax.ForInStatement  : // for( in )
-                                // case esprima.Syntax.ForOfStatement  : // for( of )
+                             // case esprima.Syntax.ForOfStatement  : // for( of )
                                 case esprima.Syntax.ForStatement    : // for( ;; )
                                 case esprima.Syntax.WhileStatement  : // while()
                                 case esprima.Syntax.SwitchStatement :
@@ -150,13 +144,13 @@ function process( source, _options ){
                                         delete astNode.label;
                                         return;
                                     };
-                                    throw new SyntaxError( "複雑なラベル付きステートメントの書き換えは非サポートです!(" + astNode.label.name + ":{ function(){} }");
+                                    throw new SyntaxError( "Rewriting complex Labeled Statement is unsupported! (" + astNode.label.name + ":{ function(){} }");
                                 case esprima.Syntax.DoWhileStatement :
                                     if( parent._old === astNode.label.name ){
                                         if( inLoopOrSwitch ){
                                             // return 不可、但し、Function 以下は探索しない
                                             searchInconvenientASTNode(
-                                                parent, 'Labeled Statement は return を含む為、書き替えできません！',
+                                                parent, 'Labeled Statement cannot be rewritten because it contains a `return`!',
                                                 [ { type : esprima.Syntax.ReturnStatement, _old : undefined } ],
                                                 [ esprima.Syntax.FunctionDeclaration, esprima.Syntax.FunctionExpression ]
                                             );
@@ -188,6 +182,7 @@ function process( source, _options ){
                                                     : [ { type : esprima.Syntax.Identifier, name : variableOfThis },
                                                         { type : esprima.Syntax.Identifier, name : variableOfArguments } ];
                                             // do{ break; }while(false)
+                                            // ↓
                                             // (function(){ return; })()
                                             relaceASTNode(
                                                 getParentASTNode(),
@@ -229,16 +224,16 @@ function process( source, _options ){
                                 astNode.key.value = '' + astNode.key.value;
                                 astNode.key.raw   = '"' + astNode.key.value + '"';
                             } else {
-                                throw new SyntaxError( 'Object Literal のプロパティに数値(' + astNode.key.value + ')が使われています！' );
+                                throw new SyntaxError( 'Object Literal with Numeric Property! (' + astNode.key.value + ')' );
                             };
                         };
                     } else if( '' + ( astNode.key.value - 0 ) === astNode.key.value ){
                         if( !CANUSE_NUMERIC_STRING_FOR_OBJECT_LITERAL_PROPERTY ){
-                            throw new SyntaxError( 'Object Literal のプロパティに数値文字列("' + astNode.key.value + '")が使われています！' );
+                            throw new SyntaxError( 'Object Literal with Numeric String Property! ("' + astNode.key.value + '")' );
                         };
                     } else if( astNode.key.value === '' ){
                         if( !CANUSE_EMPTY_STRING_FOR_OBJECT_LITERAL_PROPERTY ){
-                            throw new SyntaxError( 'Object Literal のプロパティに空文字列("")が使われています！' );
+                            throw new SyntaxError( 'Object Literal with Empty String Property! ("")' );
                         };
                     };
                 };
@@ -259,15 +254,7 @@ function process( source, _options ){
                     hexadecimal : true,
                     quotes      : "auto",
                     escapeless  : false,
-                    compact     : true,
-                    /* space       : '',
-                    indent      : {
-                        style                  : '',
-                        base                   : 0,
-                        adjustMultilineComment : false
-                    },
-                    parentheses : false,
-                    semicolons  : false */
+                    compact     : true
                 }
             }
         );
