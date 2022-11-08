@@ -44,8 +44,8 @@ const escodegen = (function(){
 
 module.exports = process;
 
-function process( source, _options ){
-    const options         = _options || {};
+function process( source, opt_options ){
+    const options         = opt_options || {};
     const minIEVersion    = options.minIEVersion    || 5.5;
     const minOperaVersion = options.minOperaVersion || 8;
 
@@ -56,12 +56,12 @@ function process( source, _options ){
     // RegExp の制限
 
     // Object リテラルの制限
-    const CANUSE_NUMERIC_FOR_OBJECT_LITERAL_PROPERTY        = 5.5 <= minIEVersion && 7.5 <= minOperaVersion;
-    const CANUSE_NUMERIC_STRING_FOR_OBJECT_LITERAL_PROPERTY = 7.5 <= minOperaVersion;
-    const CANUSE_EMPTY_STRING_FOR_OBJECT_LITERAL_PROPERTY   = 7.5 <= minOperaVersion;
+    const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY        = 5.5 <= minIEVersion && 7.5 <= minOperaVersion;
+    const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_STRING_PROPERTY = 7.5 <= minOperaVersion;
+    const CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY   = 7.5 <= minOperaVersion;
 
-    const AST_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
-    const AST_IDENTIFER_ARGUMENTS = { type : esprima.Syntax.Identifier, name : 'arguments' };
+    const ASTNODE_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
+    const ASTNODE_IDENTIFER_ARGUMENTS = { type : esprima.Syntax.Identifier, name : 'arguments' };
 
     const ast = esprima.parse( source );
 
@@ -196,10 +196,10 @@ function process( source, _options ){
                                                             isThisAndArgumentsFound === 0
                                                                 ? [] :
                                                             isThisAndArgumentsFound === 1
-                                                                ? [ AST_IDENTIFER_THIS ] :
+                                                                ? [ ASTNODE_IDENTIFER_THIS ] :
                                                             isThisAndArgumentsFound === 2
-                                                                ? [ AST_IDENTIFER_ARGUMENTS ]
-                                                                : [ AST_IDENTIFER_THIS, AST_IDENTIFER_ARGUMENTS ]
+                                                                ? [ ASTNODE_IDENTIFER_ARGUMENTS ]
+                                                                : [ ASTNODE_IDENTIFER_THIS, ASTNODE_IDENTIFER_ARGUMENTS ]
                                                     }
                                                 }
                                             );
@@ -218,7 +218,7 @@ function process( source, _options ){
 
                 if( parent && parent.type === esprima.Syntax.ObjectExpression ){
                     if( typeof astNode.key.value === 'number' ){
-                        if( !CANUSE_NUMERIC_FOR_OBJECT_LITERAL_PROPERTY ){
+                        if( !CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY ){
                             if( 7.5 <= minOperaVersion ){
                                 // To Numeric String Property : fallback for IE5-
                                 astNode.key.value = '' + astNode.key.value;
@@ -228,11 +228,11 @@ function process( source, _options ){
                             };
                         };
                     } else if( '' + ( astNode.key.value - 0 ) === astNode.key.value ){
-                        if( !CANUSE_NUMERIC_STRING_FOR_OBJECT_LITERAL_PROPERTY ){
+                        if( !CANUSE_OBJECT_LITERAL_WITH_NUMERIC_STRING_PROPERTY ){
                             throw new SyntaxError( 'Object Literal with Numeric String Property! ("' + astNode.key.value + '")' );
                         };
                     } else if( astNode.key.value === '' ){
-                        if( !CANUSE_EMPTY_STRING_FOR_OBJECT_LITERAL_PROPERTY ){
+                        if( !CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY ){
                             throw new SyntaxError( 'Object Literal with Empty String Property! ("")' );
                         };
                     };
