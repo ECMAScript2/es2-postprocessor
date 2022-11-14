@@ -30,6 +30,7 @@ const escodegen = (function(){
                             checkopoint = -1;
                             parent.callee    = astNode.callee;
                             parent.arguments = astNode.arguments;
+                            return estraverse.VisitorOption.Break;
                         };
                     };
                 };
@@ -39,7 +40,7 @@ const escodegen = (function(){
     if( checkopoint !== -1 ){
         throw new Error( 'Rewrite `escodegen` failed!' );
     };
-    return eval( '(function(){var exports={};' + require( 'escodegen' ).generate( ast ) + ';return exports;})()' );
+    return eval( '(function(){var exports={};' + require( 'escodegen' ).generate( ast ) + ';return exports})()' );
 })();
 
 module.exports = process;
