@@ -49,6 +49,7 @@ function process( source, opt_options ){
     const options         = opt_options || {};
     const minIEVersion    = options.minIEVersion    || 5.5;
     const minOperaVersion = options.minOperaVersion || 8;
+    const minGeckoVersion = options.minGeckoVersion || 0.8;
 
     // 構文の制限
     const CANUSE_MOST_ES3_SYNTAXES       = 5 <= minIEVersion;
@@ -61,10 +62,32 @@ function process( source, opt_options ){
     const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_STRING_PROPERTY = 7.5 <= minOperaVersion;
     const CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY   = 7.5 <= minOperaVersion;
 
+    const WORKAROUND_FOR_IIFE_BUG = minGeckoVersion < 0.8;
+
     const ASTNODE_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
     const ASTNODE_IDENTIFER_ARGUMENTS = { type : esprima.Syntax.Identifier, name : 'arguments' };
 
     const ast = esprima.parse( source );
+
+    function relaceASTNode( parent, oldNode, newNodeOrNodeList ){
+        let key, index;
+
+        for( key in parent ){
+            if( Array.isArray( parent[ key ] ) ){
+                index = parent[ key ].indexOf( oldNode );
+                if( 0 <= index ){
+                    if( Array.isArray( newNodeOrNodeList ) ){
+                        [].splice.apply( parent[ key ], [ index, 1 ].concat( newNodeOrNodeList ) );
+                    } else {
+                        parent[ key ].splice( index, 1, newNodeOrNodeList );
+                    };
+                    return;
+                };
+            };
+        };
+        console.dir(parent);
+        throw new Error( 'Failed to replace AST Node!' );
+    };
 
     estraverse.traverse(
         ast,
@@ -76,22 +99,6 @@ function process( source, opt_options ){
                 function getParentASTNode(){
                     ++pointer;
                     return parents[ parents.length - pointer ];
-                };
-
-                function relaceASTNode( parent, oldNode, newNode ){
-                    let key, index;
-
-                    for( key in parent ){
-                        if( Array.isArray( parent[ key ] )){
-                            index = parent[ key ].indexOf( oldNode );
-                            if( 0 <= index ){
-                                parent[ key ].splice( index, 1, newNode );
-                                return;
-                            };
-                        };
-                    };
-                    console.dir(parent);
-                    throw new Error( 'Failed to replace AST Node!' );
                 };
 
                 if( !CANUSE_MOST_ES3_SYNTAXES ){
@@ -244,6 +251,52 @@ function process( source, opt_options ){
         }
     );
 
+    if( WORKAROUND_FOR_IIFE_BUG ){
+        // 1. 同一スコープ内の、即時実行関数と関数の存否確認
+        // 2. 関数宣言無し, 即時実行関数ありならば、変換を行う
+        //    1. (funciton(a,b){})(a,b) => funciton xx(a,b){}; xx(a,b);
+        //    2. 以上の変換は同一スコープの一つの即時実行関数に行えばよい
+        const unusedIdentifer = generateUnusedIdentifierName( ast );
+
+        estraverse.traverse(
+            ast,
+            {
+                enter : function( astNode, parent ){
+                    if( astNode.type === esprima.Syntax.FunctionExpression || astNode.type === esprima.Syntax.FunctionDeclaration ){
+                        let lastIIFE, parentOfIIFE, isFunctionDeclarationFound;
+                        // console.log( astNode )
+                        estraverse.traverse(
+                            astNode.body,
+                            {
+                                enter : function( astNode, parent ){
+                                    if( astNode.type === esprima.Syntax.ExpressionStatement && astNode.expression.type === esprima.Syntax.CallExpression && astNode.expression.callee.type == esprima.Syntax.FunctionExpression ){
+                                        lastIIFE = astNode;
+                                        parentOfIIFE = parent;
+                                        return estraverse.VisitorOption.Skip;
+                                    };
+                                    if( astNode.type === esprima.Syntax.FunctionDeclaration ){
+                                        isFunctionDeclarationFound = true;
+                                        return estraverse.VisitorOption.Break;
+                                    };
+                                }
+                            }
+                        );
+            
+                        if( lastIIFE && !isFunctionDeclarationFound ){
+                            const callExpression = lastIIFE.expression;
+                            const funcExpressionToDeclaration = lastIIFE.expression.callee;
+
+                            callExpression.callee = funcExpressionToDeclaration.id = { type : esprima.Syntax.Identifier, name : unusedIdentifer };
+                            funcExpressionToDeclaration.type = esprima.Syntax.FunctionDeclaration;
+
+                            relaceASTNode( parentOfIIFE, lastIIFE, [ funcExpressionToDeclaration, { type: esprima.Syntax.EmptyStatement }, lastIIFE ] ); // TODO _$ = void 0;
+                        };
+                    };
+                }
+            }
+        );
+    };
+
     return escodegen.generate(
         ast,
             {
@@ -327,7 +380,7 @@ function generateUnusedIdentifierName( ast ){
             ast,
             {
                 enter : function( astNode, parent ){
-                    if( astNode.type === esprima.Syntax.BreakStatement ){
+                    if( astNode.type === esprima.Syntax.BreakStatement ){ // break ID; は含めない!
                         return estraverse.VisitorOption.Skip;
                     };
                     if( astNode.type === esprima.Syntax.Identifier ){

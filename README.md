@@ -4,16 +4,16 @@ Post processor for legacy DHTML browsers.
 
 ---
 
-Check for JavaScript Syntax Errors in IE <=5 and Opera <=7.x and Gecko <=0.7.x.
+Check for JavaScript Syntax Errors in IE <=5 and Opera <=7.x and Gecko <=0.7.
 
-Some syntax is rewritten. Otherwise, throws an `SyntaxError`.
+Some syntax is rewritten. Work around JavaScript engine bug. Otherwise, throws an `SyntaxError`.
 
 ## Usage
 
 ~~~js
 const es2PostProcessor = require('es2-postprocessor');
 
-sourceForLegacyBrowsers = es2PostProcessor(source, {minIEVersion : 5, minOperaVersion : 7});
+sourceForLegacyBrowsers = es2PostProcessor(source, {minIEVersion: 5, minOperaVersion: 7, minGeckoVersion: 0.6});
 ~~~
 
 ### gulp plugin
@@ -23,7 +23,7 @@ gulp.task('post_process_for_ie5_and_opera7',
     function(){
         return gulp.src('main.js')
                    .pipe(
-                       require('es2-postprocessor').gulp({minIEVersion : 5, minOperaVersion : 7})
+                       require('es2-postprocessor').gulp({minIEVersion: 5, minOperaVersion: 7, minGeckoVersion: 0.6})
                    ).pipe(
                        gulp.dest('dist/js/legacy')
                    );
@@ -31,7 +31,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 );
 ~~~
 
-### es2-postprocessor + Google Closure Compiler
+### gulp + es2-postprocessor + Google Closure Compiler
 
 When formatting code with Google Closure Compiler.
 
@@ -40,7 +40,7 @@ gulp.task('post_process_for_ie5_and_opera7',
     function(){
         return gulp.src('main.js')
                    .pipe(
-                       require('es2-postprocessor').gulp({minIEVersion : 5, minOperaVersion : 7})
+                       require('es2-postprocessor').gulp({minIEVersion: 5, minOperaVersion: 7, minGeckoVersion: 0.6})
                    .pipe(
                        require('google-closure-compiler').gulp()(
                            {
@@ -58,20 +58,24 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ## Options
 
-| Property          | Description                                                                    | Default value |
-|:------------------|:-------------------------------------------------------------------------------|--------------:|
-| `minIEVersion`    | Set to `4` if you want to fix syntax errors or warnings that occur in IE4.     | `5.5`         |
-| `minOperaVersion` | Set to `7` if you want to fix syntax errors or warnings that occur in Opera 7. | `8.0`         |
+| Property          | Description                                                                     | Default value |
+|:------------------|:--------------------------------------------------------------------------------|--------------:|
+| `minIEVersion`    | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
+| `minOperaVersion` | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
+| `minGeckoVersion` | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
 
 ## ECMAScript3 Syntax Support Table
 
-| Browser and Version               | Sample Code             | IE 4.0      | IE 5.0      | Opera 7.0~7.2x | Opera 7.5x  | IE 5.5+, Opera 8+ |
-|:----------------------------------|:------------------------|:-----------:|:-----------:|:--------------:|:-----------:|:-----------------:|
-| Most ES3 Syntaxes                 | `instanceof, in, try~`  | ✕          | ✔          | ✔             | ✔          | ✔                |
-| Labeled Statement Block           | `a: { break a; }`       | ✔          | ✔          | ✕(replace)    | ✕(replace) | ✔                |
-| Numeric for Object Literal        | `{ 1 : 1 }`             | ✕(replace) | ✕(replace) | ✕             | ✔          | ✔                |
-| Numeric String for Object Literal | `{ "1" : 1 }`           | ✔          | ✔          | ✕             | ✔          | ✔                |
-| Empty String for Object Literal   | `{ "" : "" }`           | ✔          | ✔          | ✕             | ✔          | ✔                |
+|                                             | Example                              | IE 4.0  | IE 5.0  | Opera 7.0~7.2x | Opera 7.5x | Gecko ~0.7 |IE 5.5+, Opera 8+, Gecko 0.8+ |
+|:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:--------------:|:----------:|:----------:|:----------------------------:|
+| Most ECMAScript3 Syntaxes                   | `instanceof, in, try~catch, throw`   | ✕      | ✔      | ✔             | ✔         | ✔         | ✔                           |
+| Labeled Statement Block                     | `a: {break a;}`                      | ✔      | ✔      | ✕(fix)        | ✕(fix)    | ✔         | ✔                           |
+| Object Literal with Numeric Property        | `{1: 1}`                             | ✕(fix) | ✕(fix) | ✕             | ✔         | ✔         | ✔                           |
+| Object Literal with Numeric String Property | `{"1": 1}`                           | ✔      | ✔      | ✕             | ✔         | ✔         | ✔                           |
+| Object Literal with Empty String Property   | `{"": ""}`                           | ✔      | ✔      | ✕             | ✔         | ✔         | ✔                           |
+| IIFE                                        | `function c(){};(function(){c()})()` | ✔      | ✔      | ✔             | ✔         | Bug(fix)   | ✔                           |
+
+
 
 ## Dynamic Rewriting `escodegen`
 
