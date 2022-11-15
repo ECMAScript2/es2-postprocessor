@@ -4,7 +4,7 @@ const estraverse = require( 'estraverse' );
 /** @see README.md > Dynamic Rewriting `escodegen` */
 const escodegen = (function(){
     const pathElements = __dirname.split( '\\' ).join( '/' ).split( '/' );
-    var checkopoint = 0;
+    let checkopoint = 0;
 
     if( pathElements[ pathElements.length - 2 ] === 'node_modules' ){
         pathElements.pop();
@@ -40,7 +40,7 @@ const escodegen = (function(){
     if( checkopoint !== -1 ){
         throw new Error( 'Rewrite `escodegen` failed!' );
     };
-    return eval( '(function(){var exports={};' + require( 'escodegen' ).generate( ast ) + ';return exports})()' );
+    return eval( '(function(){const exports={};' + require( 'escodegen' ).generate( ast ) + ';return exports})()' );
 })();
 
 module.exports = process;
@@ -70,7 +70,8 @@ function process( source, opt_options ){
         ast,
         {
             enter : function( astNode, parent ){
-                var parents = this.parents(), pointer = 0, inLoopOrSwitch;
+                const parents = this.parents();
+                let pointer = 0, inLoopOrSwitch;
 
                 function getParentASTNode(){
                     ++pointer;
@@ -78,7 +79,7 @@ function process( source, opt_options ){
                 };
 
                 function relaceASTNode( parent, oldNode, newNode ){
-                    var key, index;
+                    let key, index;
 
                     for( key in parent ){
                         if( Array.isArray( parent[ key ] )){
@@ -155,21 +156,22 @@ function process( source, opt_options ){
                                                 [ { type : esprima.Syntax.ReturnStatement, _old : undefined } ],
                                                 [ esprima.Syntax.FunctionDeclaration, esprima.Syntax.FunctionExpression ]
                                             );
-                                            var doWhileToFunc = parent;
+                                            const doWhileToFunc = parent;
+                                            let isThisAndArgumentsFound, variableOfThis, variableOfArguments;
                                             delete doWhileToFunc.test;
-                                            doWhileToFunc.type       = esprima.Syntax.FunctionExpression;
-                                            doWhileToFunc.id         = null;
-                                            doWhileToFunc.generator  = doWhileToFunc.expression = doWhileToFunc.async = false;
+                                            doWhileToFunc.type      = esprima.Syntax.FunctionExpression;
+                                            doWhileToFunc.id        = null;
+                                            doWhileToFunc.generator = doWhileToFunc.expression = doWhileToFunc.async = false;
                                             if( doWhileToFunc.body.type !== esprima.Syntax.BlockStatement ){
                                                 doWhileToFunc.body = { type : esprima.Syntax.BlockStatement, body : doWhileToFunc.body };
                                             };
                                             // 1. this, arguments キーワードを見つけたら、(function(a,b){})(this, arguments)
                                             // 2. body 以下に (function(){}).call(this,) があった場合、その Call パラメータまでを書き換えて以下は探索しない
-                                            var isThisAndArgumentsFound = findThisAndArguments( doWhileToFunc.body );
+                                            isThisAndArgumentsFound = findThisAndArguments( doWhileToFunc.body );
                                             if( isThisAndArgumentsFound ){
                                                 // 3. 短い未使用の Indentifer を求める
-                                                var variableOfThis      = ( isThisAndArgumentsFound & 1 ) && generateUnusedIdentifierName( doWhileToFunc.body );
-                                                var variableOfArguments = ( isThisAndArgumentsFound & 2 ) && generateUnusedIdentifierName( doWhileToFunc.body );
+                                                variableOfThis      = ( isThisAndArgumentsFound & 1 ) && generateUnusedIdentifierName( doWhileToFunc.body );
+                                                variableOfArguments = ( isThisAndArgumentsFound & 2 ) && generateUnusedIdentifierName( doWhileToFunc.body );
                                                 // 4. this, arguments を夫々に書き換える
                                                 replaceThisAndArguments( doWhileToFunc.body, variableOfThis, variableOfArguments );
                                             };
@@ -289,8 +291,8 @@ process.gulp = function( _options ){
 };
 
 function findThisAndArguments( ast ){
-    var isThisFound      = 0;
-    var isArgumentsFound = 0;
+    let isThisFound      = 0;
+    let isArgumentsFound = 0;
 
     estraverse.traverse(
         ast,
@@ -315,8 +317,10 @@ function findThisAndArguments( ast ){
 };
 
 function generateUnusedIdentifierName( ast ){
-    var variableNames = ast._variableNames || [];
-    var name = '', chr = 'a', index = 0, charCodeStart = chr.charCodeAt( 0 );
+    let name = '', chr = 'a', index = 0;
+
+    const variableNames = ast._variableNames || [],
+          charCodeStart = chr.charCodeAt( 0 );
 
     if( variableNames.length === 0 ){
         estraverse.traverse(
@@ -386,7 +390,7 @@ function findInconvenientASTNode( ast, errorMessage, inconvenientIfMatch, skipIf
 
     function testIfASTNodeMatches( astNode, match ){
         if( Array.isArray( match ) ){
-            for( var i = 0, l = match.length; i < l; ++i ){
+            for( let i = 0, l = match.length; i < l; ++i ){
                 if( isMatch( match[ i ] ) ) return true;
             };
             return false;
@@ -398,7 +402,7 @@ function findInconvenientASTNode( ast, errorMessage, inconvenientIfMatch, skipIf
             if( typeof astNodeTypeOrNode === 'string' ){
                 return astNodeTypeOrNode === astNode.type;
             };
-            for( var key in astNodeTypeOrNode ){
+            for( let key in astNodeTypeOrNode ){
                 if( astNodeTypeOrNode[ key ] != astNode[ key ] ){ // != , not !==
                     return false;
                 };
