@@ -66,15 +66,34 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ## ECMAScript3 Syntax Support Table
 
+|                                             | Example                              | IE 4.0  | IE 5.0  | Opera 7.0~7.2x | Opera 7.5x     | Gecko ~0.7 |IE 5.5+, Opera 8+, Gecko 0.8+ |
+|:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:--------------:|:--------------:|:----------:|:----------------------------:|
+| instanceof operator                         | `obj instanceof Object`              | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
+| try statement, catch statement, throw       | `try{}catch(O_o){}`                  | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
+| in operator                                 | `"length" in []`                     | ✕      | ✕      | ✕             | ✔             | ✔         | ✔                           |
+| Labeled Statement Block                     | `a: {break a;}`                      | ✔      | ✔      | ✕(try to fix) | ✕(try to fix) | ✔         | ✔                           |
+| Object Literal with Numeric Property        | `{1: 1}`                             | ✕(fix) | ✕(fix) | ✔             | ✔             | ✔         | ✔                           |
+| RegExp Literal                              | `/reg/`                              | ✔      | ✔      | ✔             | ✔             | ✔         | ✔                           |
+| RegExp Literal with `i` `g` Flags           | `/reg/ig`                            | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
+| RegExp Literal with `m` Flag                | `/reg/m`                             | ✕      | ✕      | ✔             | ✔             | ✔         | ✔                           |
+
+## Bugs in JavaScript implementation
+
 |                                             | Example                              | IE 4.0  | IE 5.0  | Opera 7.0~7.2x | Opera 7.5x | Gecko ~0.7 |IE 5.5+, Opera 8+, Gecko 0.8+ |
 |:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:--------------:|:----------:|:----------:|:----------------------------:|
-| Most ECMAScript3 Syntaxes                   | `instanceof, in, try~catch, throw`   | ✕      | ✔      | ✔             | ✔         | ✔         | ✔                           |
-| Labeled Statement Block                     | `a: {break a;}`                      | ✔      | ✔      | ✕(fix)        | ✕(fix)    | ✔         | ✔                           |
-| Object Literal with Numeric Property        | `{1: 1}`                             | ✕(fix) | ✕(fix) | ✕             | ✔         | ✔         | ✔                           |
-| Object Literal with Numeric String Property | `{"1": 1}`                           | ✔      | ✔      | ✕             | ✔         | ✔         | ✔                           |
-| Object Literal with Empty String Property   | `{"": ""}`                           | ✔      | ✔      | ✕             | ✔         | ✔         | ✔                           |
+| Object Literal with Empty String Property   | `{"": ""}`                           | ✔      | ✔      | Bug(*1)        | Bug(*1)    | ✔         | ✔                           |
 | IIFE                                        | `function c(){};(function(){c()})()` | ✔      | ✔      | ✔             | ✔         | Bug(fix)   | ✔                           |
 
+### Object Literal with Empty String Property in Opera 7.x.
+
+~~~js
+obj = {"":"Good!"} //  Object Literal
+obj[""] // == undefined
+obj["0"] // == "Good!"
+
+obj[""] = "Good!"; // Set empty string property
+obj[""] // == "Good!"
+~~~
 
 
 ## Dynamic Rewriting `escodegen`

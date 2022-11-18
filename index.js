@@ -51,16 +51,19 @@ function process( source, opt_options ){
     const minOperaVersion = options.minOperaVersion || 8;
     const minGeckoVersion = options.minGeckoVersion || 0.8;
 
-    // 構文の制限
+    // Syntax
     const CANUSE_MOST_ES3_SYNTAXES       = 5 <= minIEVersion;
+    const CANUSE_IN_OPERATOR             = 5 <= minIEVersion && 7.5 <= minOperaVersion;
     const CANUSE_LABELED_STATEMENT_BLOCK = 8 <= minOperaVersion;
 
-    // RegExp の制限
+    // RegExp Literal
+    const CANUSE_REGEXP_LITERAL              = true; // if mobileIE4 !== false
+    const CANUSE_REGEXP_LITERAL_HAS_M_FLAG   = 5.5 <= minIEVersion; // gecko 1.9.1?
+    const CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG = 5 <= minIEVersion;
 
-    // Object リテラルの制限
-    const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY        = 5.5 <= minIEVersion && 7.5 <= minOperaVersion;
-    const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_STRING_PROPERTY = 7.5 <= minOperaVersion;
-    const CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY   = 7.5 <= minOperaVersion;
+    // Object Literal
+    const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY      = 5.5 <= minIEVersion;
+    const CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY = 8 <= minOperaVersion;
 
     const WORKAROUND_FOR_IIFE_BUG = minGeckoVersion < 0.8;
 
@@ -69,7 +72,7 @@ function process( source, opt_options ){
 
     const ast = esprima.parse( source );
 
-    function relaceASTNode( parent, oldNode, newNodeOrNodeList ){
+    function replaceASTNode( parent, oldNode, newNodeOrNodeList ){
         let key, index;
 
         for( key in parent ){
@@ -102,20 +105,38 @@ function process( source, opt_options ){
                 };
 
                 if( !CANUSE_MOST_ES3_SYNTAXES ){
-                    if( astNode.type === esprima.Syntax.BinaryExpression ){
-                        switch( astNode.operator ){
-                            case 'instanceof' :
-                            case 'in' :
-                                throw new SyntaxError( '`' + astNode.operator + '` operator uses!') ;
-                        };
+                    if( astNode.type === esprima.Syntax.BinaryExpression && astNode.operator === 'instanceof' ){
+                        throw new SyntaxError( '`instanceof` operator uses!' );
                     };
                     if( astNode.type === esprima.Syntax.TryStatement ){
-                        throw new SyntaxError( '`try ~ catch` syntax uses!' );
+                        throw new SyntaxError( '`try ~ catch` statements uses!' );
                     };
                     if( astNode.type === esprima.Syntax.ThrowStatement ){
-                        throw new SyntaxError( '`throw` syntax uses!' );
+                        throw new SyntaxError( '`throw` statements uses!' );
                     };
                 };
+                if( !CANUSE_IN_OPERATOR ){
+                    if( astNode.type === esprima.Syntax.BinaryExpression && astNode.operator === 'in' ){
+                        throw new SyntaxError( '`in` operator uses!' );
+                    };
+                };
+
+                if( !CANUSE_REGEXP_LITERAL ){
+                    if( astNode.type === esprima.Syntax.Literal && astNode.regex ){
+                        throw new SyntaxError( 'RegExp Literal uses! ' + astNode.raw );
+                    };
+                };
+                if( !CANUSE_REGEXP_LITERAL_HAS_M_FLAG ){
+                    if( astNode.type === esprima.Syntax.Literal && astNode.regex && astNode.regex.flags.match( /m/ ) ){
+                        throw new SyntaxError( 'RegExp Literal with `m` flag! ' + astNode.raw );
+                    };
+                };
+                if( !CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG ){
+                    if( astNode.type === esprima.Syntax.Literal && astNode.regex && astNode.regex.flags.match( /(i|g)/ ) ){
+                        throw new SyntaxError( 'RegExp Literal with `i` `g` flag! ' + astNode.raw );
+                    };
+                };
+
                 if( !CANUSE_LABELED_STATEMENT_BLOCK ){
                     if( astNode.type === esprima.Syntax.LabeledStatement ){
                         // continue 不可, ただし ループに出会ったら探索しない
@@ -147,9 +168,9 @@ function process( source, opt_options ){
                                     break;
                                 case esprima.Syntax.FunctionExpression :
                                     if( parent._old === astNode.label.name ){
-                                        // return へ書き替え
+                                        // return <= break ID
                                         astNode.type = esprima.Syntax.ReturnStatement;
-                                        astNode.argument = null;
+                                        astNode.argument = null; // ?
                                         delete astNode.label;
                                         return;
                                     };
@@ -194,7 +215,7 @@ function process( source, opt_options ){
                                             // do{ break; }while(false)
                                             // ↓
                                             // (function(){ return; })()
-                                            relaceASTNode(
+                                            replaceASTNode(
                                                 getParentASTNode(),
                                                 doWhileToFunc,
                                                 {
@@ -229,21 +250,13 @@ function process( source, opt_options ){
                 if( parent && parent.type === esprima.Syntax.ObjectExpression ){
                     if( typeof astNode.key.value === 'number' ){
                         if( !CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY ){
-                            if( 7.5 <= minOperaVersion ){
-                                // To Numeric String Property : fallback for IE5-
-                                astNode.key.value = '' + astNode.key.value;
-                                astNode.key.raw   = '"' + astNode.key.value + '"';
-                            } else {
-                                throw new SyntaxError( 'Object Literal with Numeric Property! (' + astNode.key.value + ')' );
-                            };
-                        };
-                    } else if( '' + ( astNode.key.value - 0 ) === astNode.key.value ){
-                        if( !CANUSE_OBJECT_LITERAL_WITH_NUMERIC_STRING_PROPERTY ){
-                            throw new SyntaxError( 'Object Literal with Numeric String Property! ("' + astNode.key.value + '")' );
+                            // To Numeric String Property : fallback for IE5-
+                            astNode.key.value = '' + astNode.key.value;
+                            astNode.key.raw   = '"' + astNode.key.value + '"';
                         };
                     } else if( astNode.key.value === '' ){
                         if( !CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY ){
-                            throw new SyntaxError( 'Object Literal with Empty String Property! ("")' );
+                            throw new SyntaxError( 'Object Literal with Empty String Property!' );
                         };
                     };
                 };
@@ -289,7 +302,7 @@ function process( source, opt_options ){
                             callExpression.callee = funcExpressionToDeclaration.id = { type : esprima.Syntax.Identifier, name : unusedIdentifer };
                             funcExpressionToDeclaration.type = esprima.Syntax.FunctionDeclaration;
 
-                            relaceASTNode( parentOfIIFE, lastIIFE, [ funcExpressionToDeclaration, { type: esprima.Syntax.EmptyStatement }, lastIIFE ] ); // TODO _$ = void 0;
+                            replaceASTNode( parentOfIIFE, lastIIFE, [ funcExpressionToDeclaration, { type: esprima.Syntax.EmptyStatement }, lastIIFE ] ); // TODO _$ = !0;
                         };
                     };
                 }

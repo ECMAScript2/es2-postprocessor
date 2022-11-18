@@ -11,10 +11,12 @@ const ie5_opr70 = {
     minOperaVersion : 7
 };
 
-test('Object Literal', (t) => {
+test('Numeric Property', (t) => {
     t.is(e2pp('a={1:1};', ie5_opr75), 'a={"1":1};');
+    t.is(e2pp('a={"1":1};', ie5_opr70), 'a={"1":1};');
+});
 
-    t.throws(() => e2pp('a={1:1};', ie5_opr70));
-    t.throws(() => e2pp('a={"1":1};', ie5_opr70));
+test('Empty Property', (t) => {
     t.throws(() => e2pp('a={"":1};', ie5_opr70));
+    t.throws(() => e2pp('a={"":1};', ie5_opr75));
 });
