@@ -1,6 +1,6 @@
 {
   "name": "es2-postprocessor",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Post processor for legacy DHTML browsers.",
   "homepage": "https://github.com/ECMAScript2/es2-postprocessor",
   "repository": {
