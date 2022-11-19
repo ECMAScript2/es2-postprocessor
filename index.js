@@ -47,7 +47,8 @@ const escodegen = (function(){
 module.exports = process;
 
 function process( source, opt_options ){
-    const options         = opt_options || {};
+    const options         = opt_options             || {};
+    const RESULT_OBJECT   = options.resultObject    || {};
     const minIEVersion    = options.minIEVersion    || 5.5;
     const minOperaVersion = options.minOperaVersion || 8;
     const minGeckoVersion = options.minGeckoVersion || 0.8;
@@ -317,10 +318,10 @@ function process( source, opt_options ){
         );
     };
 
-    let polyfillCodes = '';
-
     if( EMBED_POLYFILL_AUTOMATICARY ){
-        const REQUIRED_POLYFILLS = {};
+        const BUILTIN_OBJECTS    = {};
+        const REQUIRED_POLYFILLS = [];
+        const EMBEDDED_POLYFILLS = [];
         let polyfillCodesOnlyForIE = '';
         let polyfillCodesNotOnlyIE = '';
 
@@ -332,27 +333,36 @@ function process( source, opt_options ){
                         switch( astNode.callee.name ){
                             case 'decodeURI' :
                             case 'decodeURIComponent' :
-                                REQUIRED_POLYFILLS[ 'decodeURIComponent' ] = true;
+                                BUILTIN_OBJECTS[ 'decodeURIComponent' ] = true;
                                 break;
                             case 'encodeURI' :
                             case 'encodeURIComponent' :
-                                REQUIRED_POLYFILLS[ 'encodeURIComponent' ] = true;
+                                BUILTIN_OBJECTS[ 'encodeURIComponent' ] = true;
                                 break;
                         };
                     };
                     if( astNode.type === esprima.Syntax.Identifier ){
                         switch( astNode.name ){
+                            case 'decodeURI' :
+                            case 'decodeURIComponent' :
+                                BUILTIN_OBJECTS[ 'decodeURIComponent' ] = true;
+                                break;
+                            case 'encodeURI' :
+                            case 'encodeURIComponent' :
+                                BUILTIN_OBJECTS[ 'encodeURIComponent' ] = true;
+                                break;
                             case 'indexOf' :
                             case 'pop' :
                             case 'push' :
                             case 'shift' :
                             case 'splice' :
                             case 'unshift' :
-                                REQUIRED_POLYFILLS[ 'Array.prototype.' + astNode.name ] = true;
+                                BUILTIN_OBJECTS[ 'Array.prototype.' + astNode.name ] = true;
                                 break;
-                            case 'apply' :
                             case 'call' :
-                                REQUIRED_POLYFILLS[ 'Function.prototype.' + astNode.name ] = true;
+                                BUILTIN_OBJECTS[ 'Function.prototype.apply' ] = true;
+                            case 'apply' :
+                                BUILTIN_OBJECTS[ 'Function.prototype.' + astNode.name ] = true;
                                 break;
                         };
                     };
@@ -360,19 +370,30 @@ function process( source, opt_options ){
             }
         );
 
-        for( let builtinName in REQUIRED_POLYFILLS ){
-            if( SKIP_TO_EMBED_POLYFILLS.indexOf( builtinName ) === -1 ){
-                if( builtinName === 'Array.prototype.indexOf' ){
-                    polyfillCodesNotOnlyIE += polyfills[ builtinName ] || ( '\n' + builtinName + ' POLYFILL NOT FOUND!\n' );
-                } else {
-                    polyfillCodesOnlyForIE += polyfills[ builtinName ] || ( '\n' + builtinName + ' POLYFILL NOT FOUND!\n' );
+        for( let builtinName in BUILTIN_OBJECTS ){
+            REQUIRED_POLYFILLS.push( builtinName );
+            if( SKIP_TO_EMBED_POLYFILLS !== '*' && SKIP_TO_EMBED_POLYFILLS.indexOf( builtinName ) === -1 ){
+                if( !polyfills[ builtinName ] ){
+                    throw new Error( builtinName + ' Polyfill Not Found!' );
                 };
+                if( builtinName === 'Array.prototype.indexOf' ){
+                    polyfillCodesNotOnlyIE += polyfills[ builtinName ] + '\n';
+                } else {
+                    if( polyfillCodesOnlyForIE ) polyfillCodesOnlyForIE += '\n';
+                    polyfillCodesOnlyForIE += polyfills[ builtinName ]
+                };
+                EMBEDDED_POLYFILLS.push( builtinName );
             };
         };
-        polyfillCodes = ( polyfillCodesOnlyForIE ? '/*@cc_on ' + polyfillCodesOnlyForIE + ' @*/\n' : '' ) + polyfillCodesNotOnlyIE;
+
+        RESULT_OBJECT.requiredPolyfills = REQUIRED_POLYFILLS;
+        RESULT_OBJECT.embeddedPolyfills = EMBEDDED_POLYFILLS;
+
+        return ( options.minIEVersion < 5.5 && polyfillCodesOnlyForIE ? '/*@cc_on ' + polyfillCodesOnlyForIE + ' @*/\n' : '' ) +
+               polyfillCodesNotOnlyIE + source;
     };
 
-    return polyfillCodes + escodegen.generate(
+    return escodegen.generate(
         ast,
             {
                 // https://github.com/estools/escodegen/issues/1
@@ -407,7 +428,8 @@ process.gulp = function( _options ){
     
             if( file.extname === '.js' ){
                 try {
-                    file.contents = Buffer.from( process( file.contents.toString( encoding ), _options ) );
+                    let contents = file.contents.toString( encoding );
+                    file.contents = Buffer.from( process( contents, _options ) );
                     this.push( file );
                 } catch(O_o){
                     this.emit( 'error', new PluginError( pluginName, O_o ) );

@@ -60,13 +60,22 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ## Options
 
-| Property             | Description                                                                     | Default value |
+| Property              | Description                                                                     | Default value |
+|:----------------------|:--------------------------------------------------------------------------------|--------------:|
+| `minIEVersion`        | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
+| `minOperaVersion`     | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
+| `minGeckoVersion`     | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
+| `resultObject`        | Set to `{}` if you want to report.                                              | `null`        |
+| `embedPolyfills`      |                                                                                 | `false`       |
+| `skipEmbedPolyfills`  | Set `report.embeddedPolyfills` if you wont to embed twice. `*`: Never embed.    | `[]`          |
+| `forceEmbedPolyfills` | Set `report.requiredPolyfills` if you want to embed for other library.          | `[]`          |
+
+### Result Store Object
+
+| Property             | Description                                                                     | Example       |
 |:---------------------|:--------------------------------------------------------------------------------|--------------:|
-| `minIEVersion`       | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
-| `minOperaVersion`    | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
-| `minGeckoVersion`    | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
-| `embedPolyfills`     |                                                                                 | `false`       |
-| `skipEmbedPolyfills` | Prevent embedding twice with `report.embeddedPolyfills`.                        | `[]`          |
+| `requiredPolyfills`  |                                                                                 | `[]`          |
+| `embeddedPolyfills`  |                                                                                 | `[]`          |
 
 ## ECMAScript3 Syntax Support Table
 

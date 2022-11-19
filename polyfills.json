@@ -1,8 +1,8 @@
 {
     "Array.prototype.indexOf": "Array.prototype.indexOf||(Array.prototype.indexOf=function(c,a){var b=this.length>>>0;if(0===b||a&&(a=a||0,a=a===-1/0?0:(0>a?-a:a)|0,b<=a))return-1;for(a=0<=a?a:0<b+a?b+a:0;a<b;++a)if(this[a]===c)return a;return-1});",
-    "Array.prototype.pop": "Array.prototype.pop||(Array.prototype.pop=function(){var a=this[this.length-1];--this.length;return a});",
+    "Array.prototype.pop": "Array.prototype.pop||(Array.prototype.pop=function(){var a=this.length,b=this[a-1];a&&--this.length;return b});",
     "Array.prototype.push": "Array.prototype.push||(Array.prototype.push=function(){for(var b=arguments,a=0,c=b.length,d=this.length;a<c;++a)this[d+a]=b[a];return this.length});",
-    "Array.prototype.shift": "Array.prototype.shift||(Array.prototype.shift=function(){for(var b=this[0],a=1,c=this.length;a<c;++a)this[a-1]=this[a];--this.length;return b});",
+    "Array.prototype.shift": "Array.prototype.shift||(Array.prototype.shift=function(){var b=this.length;if(b){for(var c=this[0],a=1;a<b;++a)this[a-1]=this[a];--this.length;return c}});",
     "Array.prototype.splice": "Array.prototype.splice||(Array.prototype.splice=function(c,e){var f=arguments,d=f.length-2-e,g=this.slice(c,c+e),b;if(0<d){var a=this.length-1;for(b=c+e;a>=b;--a)this[a+d]=this[a]}else if(0>d){a=c+e;for(b=this.length;a<b;++a)this[a+d]=this[a];this.length+=d}a=2;for(b=f.length;a<b;++a)this[a-2+c]=f[a];return g});",
     "Array.prototype.unshift": "Array.prototype.unshift||(Array.prototype.unshift=function(){for(var c=arguments,b=c.length,d=this.length+=b-1,a=d;a>=b;--a)this[a]=this[a-b];for(a=0;a<b;++a)this[a]=c[a];return d});",
     "decodeURIComponent": "window.decodeURI||(decodeURI=function(d){var e=[],f=parseInt,h=String.fromCharCode;d+=\"\";for(var g=-1,b=0,k=d.length,c,a;b<k;++b)a?(a=f(d.substr(b,2),16),++b,127<a&&(223<a?(c=(a&15)<<12,a=f(d.substr(b+2,2),16)&63,b+=3,c+=a<<6):c=(a&63)<<6,a=f(d.substr(b+2,2),16)&63,b+=3,a+=c),e[++g]=h(a),a=!1):(c=d.charAt(b),(a=\"%\"===c)||(e[++g]=c));return e.join(\"\")});window.decodeURIComponent||(decodeURIComponent=decodeURI);",

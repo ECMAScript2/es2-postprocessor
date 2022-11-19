@@ -1,6 +1,7 @@
 node_modules
 .submodules
 .gitignore
+.gitmodules
 TODO.md
 test
 gulpfile.js
