@@ -8,6 +8,8 @@ Check for JavaScript Syntax Errors in IE <=5 and Opera <=7.x and Gecko <=0.7.
 
 Some syntax is rewritten. Work around JavaScript engine bug. Otherwise, throws an `SyntaxError`.
 
+Embed [polyfills](https://github.com/ECMAScript2/es2-to-es3) has been automatic since 0.9.0.
+
 ## Usage
 
 ~~~js
@@ -58,11 +60,13 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ## Options
 
-| Property          | Description                                                                     | Default value |
-|:------------------|:--------------------------------------------------------------------------------|--------------:|
-| `minIEVersion`    | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
-| `minOperaVersion` | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
-| `minGeckoVersion` | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
+| Property             | Description                                                                     | Default value |
+|:---------------------|:--------------------------------------------------------------------------------|--------------:|
+| `minIEVersion`       | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
+| `minOperaVersion`    | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
+| `minGeckoVersion`    | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
+| `embedPolyfills`     |                                                                                 | `false`       |
+| `skipEmbedPolyfills` | Prevent embedding twice with `report.embeddedPolyfills`.                        | `[]`          |
 
 ## ECMAScript3 Syntax Support Table
 
