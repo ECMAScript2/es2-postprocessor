@@ -1,3 +1,0 @@
-[submodule ".submodules/es2-to-es3"]
-	path = .submodules/es2-to-es3
-	url = https://github.com/ECMAScript2/es2-to-es3.git

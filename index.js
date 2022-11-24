@@ -48,7 +48,6 @@ module.exports = process;
 
 function process( source, opt_options ){
     const options         = opt_options             || {};
-    const RESULT_OBJECT   = options.resultObject    || {};
     const minIEVersion    = options.minIEVersion    || 5.5;
     const minOperaVersion = options.minOperaVersion || 8;
     const minGeckoVersion = options.minGeckoVersion || 0.8;
@@ -56,23 +55,18 @@ function process( source, opt_options ){
     // Syntax
     const CANUSE_MOST_ES3_SYNTAXES       = 5 <= minIEVersion;
     const CANUSE_IN_OPERATOR             = 5 <= minIEVersion && 7.5 <= minOperaVersion;
-    const CANUSE_LABELED_STATEMENT_BLOCK = 8 <= minOperaVersion;
+    const CANUSE_LABELED_STATEMENT_BLOCK = 7.5 <= minOperaVersion;
 
     // RegExp Literal
     const CANUSE_REGEXP_LITERAL              = true; // if mobileIE4 !== false
-    const CANUSE_REGEXP_LITERAL_HAS_M_FLAG   = 5.5 <= minIEVersion; // gecko 1.9.1?
+    const CANUSE_REGEXP_LITERAL_HAS_M_FLAG   = 5.5 <= minIEVersion;
     const CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG = 5 <= minIEVersion;
 
     // Object Literal
     const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY      = 5.5 <= minIEVersion;
     const CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY = 8 <= minOperaVersion;
 
-    const WORKAROUND_FOR_IIFE_BUG = minGeckoVersion < 0.8;
-
-    // polyfill
-    const EMBED_POLYFILL_AUTOMATICARY = options.embedPolyfills === true;
-    const SKIP_TO_EMBED_POLYFILLS     = options.skipEmbedPolyfills || [];
-
+    const WORKAROUND_FOR_IIFE_BUG = minGeckoVersion < 0.9; // < 0.8.1
 
     // Common AST Node
     const ASTNODE_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
@@ -316,81 +310,6 @@ function process( source, opt_options ){
                 }
             }
         );
-    };
-
-    if( EMBED_POLYFILL_AUTOMATICARY ){
-        const BUILTIN_OBJECTS    = {};
-        const REQUIRED_POLYFILLS = [];
-        const EMBEDDED_POLYFILLS = [];
-        let polyfillCodesOnlyForIE = '';
-        let polyfillCodesNotOnlyIE = '';
-
-        estraverse.traverse(
-            ast,
-            {
-                enter : function( astNode, parent ){
-                    if( astNode.type === esprima.Syntax.CallExpression && astNode.callee ){
-                        switch( astNode.callee.name ){
-                            case 'decodeURI' :
-                            case 'decodeURIComponent' :
-                                BUILTIN_OBJECTS[ 'decodeURIComponent' ] = true;
-                                break;
-                            case 'encodeURI' :
-                            case 'encodeURIComponent' :
-                                BUILTIN_OBJECTS[ 'encodeURIComponent' ] = true;
-                                break;
-                        };
-                    };
-                    if( astNode.type === esprima.Syntax.Identifier ){
-                        switch( astNode.name ){
-                            case 'decodeURI' :
-                            case 'decodeURIComponent' :
-                                BUILTIN_OBJECTS[ 'decodeURIComponent' ] = true;
-                                break;
-                            case 'encodeURI' :
-                            case 'encodeURIComponent' :
-                                BUILTIN_OBJECTS[ 'encodeURIComponent' ] = true;
-                                break;
-                            case 'indexOf' :
-                            case 'pop' :
-                            case 'push' :
-                            case 'shift' :
-                            case 'splice' :
-                            case 'unshift' :
-                                BUILTIN_OBJECTS[ 'Array.prototype.' + astNode.name ] = true;
-                                break;
-                            case 'call' :
-                                BUILTIN_OBJECTS[ 'Function.prototype.apply' ] = true;
-                            case 'apply' :
-                                BUILTIN_OBJECTS[ 'Function.prototype.' + astNode.name ] = true;
-                                break;
-                        };
-                    };
-                }
-            }
-        );
-
-        for( let builtinName in BUILTIN_OBJECTS ){
-            REQUIRED_POLYFILLS.push( builtinName );
-            if( SKIP_TO_EMBED_POLYFILLS !== '*' && SKIP_TO_EMBED_POLYFILLS.indexOf( builtinName ) === -1 ){
-                if( !polyfills[ builtinName ] ){
-                    throw new Error( builtinName + ' Polyfill Not Found!' );
-                };
-                if( builtinName === 'Array.prototype.indexOf' ){
-                    polyfillCodesNotOnlyIE += polyfills[ builtinName ] + '\n';
-                } else {
-                    if( polyfillCodesOnlyForIE ) polyfillCodesOnlyForIE += '\n';
-                    polyfillCodesOnlyForIE += polyfills[ builtinName ]
-                };
-                EMBEDDED_POLYFILLS.push( builtinName );
-            };
-        };
-
-        RESULT_OBJECT.requiredPolyfills = REQUIRED_POLYFILLS;
-        RESULT_OBJECT.embeddedPolyfills = EMBEDDED_POLYFILLS;
-
-        return ( options.minIEVersion < 5.5 && polyfillCodesOnlyForIE ? '/*@cc_on ' + polyfillCodesOnlyForIE + ' @*/\n' : '' ) +
-               polyfillCodesNotOnlyIE + source;
     };
 
     return escodegen.generate(

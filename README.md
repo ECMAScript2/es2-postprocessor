@@ -8,7 +8,7 @@ Check for JavaScript Syntax Errors in IE <=5 and Opera <=7.x and Gecko <=0.7.
 
 Some syntax is rewritten. Work around JavaScript engine bug. Otherwise, throws an `SyntaxError`.
 
-Embed [polyfills](https://github.com/ECMAScript2/es2-to-es3) has been automatic since 0.9.0.
+~~Embed [polyfills](https://github.com/ECMAScript2/es2-to-es3) has been automatic since 0.9.0.=~~
 
 ## Usage
 
@@ -58,46 +58,42 @@ gulp.task('post_process_for_ie5_and_opera7',
 );
 ~~~
 
-## Options
+### Options
 
 | Property              | Description                                                                     | Default value |
 |:----------------------|:--------------------------------------------------------------------------------|--------------:|
 | `minIEVersion`        | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
 | `minOperaVersion`     | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
 | `minGeckoVersion`     | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
-| `resultObject`        | Set to `{}` if you want to report.                                              | `null`        |
-| `embedPolyfills`      |                                                                                 | `false`       |
-| `skipEmbedPolyfills`  | Set `report.embeddedPolyfills` if you wont to embed twice. `*`: Never embed.    | `[]`          |
-| `forceEmbedPolyfills` | Set `report.requiredPolyfills` if you want to embed for other library.          | `[]`          |
-
-### Result Store Object
-
-| Property             | Description                                                                     | Example       |
-|:---------------------|:--------------------------------------------------------------------------------|--------------:|
-| `requiredPolyfills`  |                                                                                 | `[]`          |
-| `embeddedPolyfills`  |                                                                                 | `[]`          |
 
 ## ECMAScript3 Syntax Support Table
 
-|                                             | Example                              | IE 4.0  | IE 5.0  | Opera 7.0~7.2x | Opera 7.5x     | Gecko ~0.7 |IE 5.5+, Opera 8+, Gecko 0.8+ |
-|:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:--------------:|:--------------:|:----------:|:----------------------------:|
-| instanceof operator                         | `obj instanceof Object`              | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
-| try statement, catch statement, throw       | `try{}catch(O_o){}`                  | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
-| in operator                                 | `"length" in []`                     | ✕      | ✕      | ✔             | ✔             | ✔         | ✔                           |
-| Labeled Statement Block                     | `a: {break a;}`                      | ✔      | ✔      | ✕(try to fix) | ✕(try to fix) | ✔         | ✔                           |
-| Object Literal with Numeric Property        | `{1: 1}`                             | ✕(fix) | ✕(fix) | ✔             | ✔             | ✔         | ✔                           |
-| RegExp Literal                              | `/reg/`                              | ✔      | ✔      | ✔             | ✔             | ✔         | ✔                           |
-| RegExp Literal with `i` `g` Flags           | `/reg/ig`                            | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
-| RegExp Literal with `m` Flag                | `/reg/m`                             | ✕      | ✕      | ✔             | ✔             | ✔         | ✔                           |
+|                                             | Example                              | IE      | Opera   | Gecko |
+|:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:-----:|
+| instanceof operator                         | `obj instanceof Object`              | 5(*1)   | ✔      | ✔    |
+| try statement, catch statement, throw       | `try{}catch(O_o){}`                  | 5(*1)   | ✔      | ✔    |
+| in operator                                 | `"length" in []`                     | 5.5(*1) | ✔      | ✔    |
+| Labeled Statement Block                     | `a: {break a;}`                      | ✔      | 7.5(*2) | ✔    |
+| Object Literal with Numeric Property        | `{1: 1}`                             | 5.5(*3) | ✔      | ✔    |
+| RegExp Literal                              | `/reg/`                              | ✔      | ✔      | ✔    |
+| RegExp Literal with `i` `g` Flags           | `/reg/ig`                            | 5(*1)   | ✔      | ✔    |
+| RegExp Literal with `m` Flag                | `/reg/m`                             | 5.5(*1) | ✔      | ✔    |
+
+1. Just throw a Syntax Error
+2. Opera ~7.2x does not support Labeled Statement Block. Therefore, es2-postprocessor rewrite for workaround. If it is too complicated, throws an error.
+3. Rewrite for workaround.
 
 ## Bugs in JavaScript implementation
 
-|                                             | Example                              | IE 4.0  | IE 5.0  | Opera 7.0~7.2x | Opera 7.5x | Gecko ~0.7 |IE 5.5+, Opera 8+, Gecko 0.8+ |
-|:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:--------------:|:----------:|:----------:|:----------------------------:|
-| Object Literal with Empty String Property   | `{"": ""}`                           | ✔      | ✔      | Bug(*1)        | Bug(*1)    | ✔         | ✔                           |
-| IIFE                                        | `function c(){};(function(){c()})()` | ✔      | ✔      | ✔             | ✔         | Bug(fix)   | ✔                           |
+|                                             | Example                              | IE | Opera | Gecko     |
+|:--------------------------------------------|:-------------------------------------|:--:|:-----:|:---------:|
+| Object Literal with Empty String Property   | `{"": ""}`                           | ✔ | 8(*1) | ✔        |
+| IIFE                                        | `function c(){};(function(){c()})()` | ✔ | ✔    | 0.8.1(*2) |
 
-### Object Literal with Empty String Property in Opera 7.x.
+1. Throw a Syntax Error. Object Literal with Empty String Property is problematic in Opera 7.x.
+2. Gecko ~0.8.0 has a bug in IIFE. Therefore, es2-postprocessor rewrite for workaround. 
+
+### Object Literal with Empty String Property in Opera ~7.2x.
 
 ~~~js
 obj = {"":"Good!"} //  Object Literal

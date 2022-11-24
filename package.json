@@ -12,8 +12,7 @@
   },
   "main": "index.js",
   "scripts": {
-    "test": "ava",
-    "prepare": "gulp prepublish"
+    "test": "ava"
   },
   "ava": {
     "files": [
@@ -30,8 +29,6 @@
     "through2": "^4.0.2"
   },
   "devDependencies": {
-    "ava": "^5.0.1",
-    "google-closure-compiler": "^20221102.0.1",
-    "gulp": "^4.0.2"
+    "ava": "^5.0.1"
   }
 }
