@@ -83,7 +83,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 |:--------------------------------------------|:-------------------------------------|:-------:|:-------:|:--------------:|:--------------:|:----------:|:----------------------------:|
 | instanceof operator                         | `obj instanceof Object`              | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
 | try statement, catch statement, throw       | `try{}catch(O_o){}`                  | ✕      | ✔      | ✔             | ✔             | ✔         | ✔                           |
-| in operator                                 | `"length" in []`                     | ✕      | ✕      | ✕             | ✔             | ✔         | ✔                           |
+| in operator                                 | `"length" in []`                     | ✕      | ✕      | ✔             | ✔             | ✔         | ✔                           |
 | Labeled Statement Block                     | `a: {break a;}`                      | ✔      | ✔      | ✕(try to fix) | ✕(try to fix) | ✔         | ✔                           |
 | Object Literal with Numeric Property        | `{1: 1}`                             | ✕(fix) | ✕(fix) | ✔             | ✔             | ✔         | ✔                           |
 | RegExp Literal                              | `/reg/`                              | ✔      | ✔      | ✔             | ✔             | ✔         | ✔                           |
