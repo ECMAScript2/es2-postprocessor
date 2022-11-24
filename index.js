@@ -1,6 +1,5 @@
 const esprima    = require( 'esprima'    );
 const estraverse = require( 'estraverse' );
-const polyfills  = require( __dirname + '/polyfills.json' );
 
 /** @see README.md > Dynamic Rewriting `escodegen` */
 const escodegen = (function(){
