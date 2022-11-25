@@ -49,7 +49,7 @@ function process( source, opt_options ){
     const options         = opt_options             || {};
     const minIEVersion    = options.minIEVersion    || 5.5;
     const minOperaVersion = options.minOperaVersion || 8;
-    const minGeckoVersion = options.minGeckoVersion || 0.8;
+    const minGeckoVersion = options.minGeckoVersion || 0.9;
 
     // Syntax
     const CANUSE_MOST_ES3_SYNTAXES       = 5 <= minIEVersion;

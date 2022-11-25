@@ -4,11 +4,9 @@ Post processor for legacy DHTML browsers.
 
 ---
 
-Check for JavaScript Syntax Errors in IE <=5 and Opera <=7.x and Gecko <=0.7.
+Check for JavaScript Syntax Errors in IE <5.5 and Opera <8.0. Some syntax is rewritten. Otherwise, throws an `SyntaxError`.
 
-Some syntax is rewritten. Work around JavaScript engine bug. Otherwise, throws an `SyntaxError`.
-
-~~Embed [polyfills](https://github.com/ECMAScript2/es2-to-es3) has been automatic since 0.9.0.=~~
+Work around JavaScript engine bug in Gecko <=0.8.0.
 
 ## Usage
 
@@ -64,7 +62,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 |:----------------------|:--------------------------------------------------------------------------------|--------------:|
 | `minIEVersion`        | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
 | `minOperaVersion`     | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
-| `minGeckoVersion`     | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.7.        | `0.8`         |
+| `minGeckoVersion`     | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.8.0.      | `0.9`         |
 
 ## ECMAScript3 Syntax Support Table
 
@@ -91,7 +89,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 | IIFE                                        | `function c(){};(function(){c()})()` | ✔ | ✔    | 0.8.1(*2) |
 
 1. Throw a Syntax Error. Object Literal with Empty String Property is problematic in Opera 7.x.
-2. Gecko ~0.8.0 has a bug in IIFE. Therefore, es2-postprocessor rewrite for workaround. 
+2. Gecko ~0.8.0 has a bug in IIFE. Therefore, es2-postprocessor rewrite for workaround. It can be tested with the "[Javascript 実装状況と深刻なバグ > IIFE](https://itozyun.github.io/web-doc-base/test/javascript-implementation.html#iife)".
 
 ### Object Literal with Empty String Property in Opera ~7.2x.
 
@@ -103,7 +101,7 @@ obj["0"] // == "Good!"
 obj[""] = "Good!"; // Set empty string property
 obj[""] // == "Good!"
 ~~~
-
+It can be tested with the "[Javascript 実装状況と深刻なバグ](https://itozyun.github.io/web-doc-base/test/javascript-implementation.html) > Object Litearl".
 
 ## Dynamic Rewriting `escodegen`
 
@@ -125,4 +123,6 @@ itozyun, blog:[outcloud.blogspot.com](//outcloud.blogspot.com/)
 
 ## License
 
-ISC
+es2-postprocessor is licensed under MIT license.
+
+(C) 2022 [itozyun](https://github.com/itozyun)
