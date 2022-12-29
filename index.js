@@ -53,7 +53,7 @@ function process( source, opt_options ){
 
     // Syntax
     const CANUSE_MOST_ES3_SYNTAXES       = 5 <= minIEVersion;
-    const CANUSE_IN_OPERATOR             = 5 <= minIEVersion && 7.5 <= minOperaVersion;
+    const CANUSE_IN_OPERATOR             = 5.5 <= minIEVersion;
     const CANUSE_LABELED_STATEMENT_BLOCK = 7.5 <= minOperaVersion;
 
     // RegExp Literal
@@ -66,6 +66,14 @@ function process( source, opt_options ){
     const CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY = 8 <= minOperaVersion;
 
     const WORKAROUND_FOR_IIFE_BUG = minGeckoVersion < 0.9; // < 0.8.1
+
+    const CANUSE_ALL_SYNTAXES = CANUSE_MOST_ES3_SYNTAXES && CANUSE_IN_OPERATOR && CANUSE_LABELED_STATEMENT_BLOCK &&
+        CANUSE_REGEXP_LITERAL && CANUSE_REGEXP_LITERAL_HAS_M_FLAG && CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG &&
+        CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY && CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY;
+
+    if( CANUSE_ALL_SYNTAXES && !WORKAROUND_FOR_IIFE_BUG ){
+        return source;
+    };
 
     // Common AST Node
     const ASTNODE_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
@@ -93,6 +101,7 @@ function process( source, opt_options ){
         throw new Error( 'Failed to replace AST Node!' );
     };
 
+    !CANUSE_ALL_SYNTAXES &&
     estraverse.traverse(
         ast,
         {
@@ -269,7 +278,8 @@ function process( source, opt_options ){
         // 1. 同一スコープ内の、即時実行関数と関数の存否確認
         // 2. 関数宣言無し, 即時実行関数ありならば、変換を行う
         //    1. (funciton(a,b){})(a,b) => funciton xx(a,b){}; xx(a,b);
-        //    2. 以上の変換は同一スコープの一つの即時実行関数に行えばよい
+        //    2. (a = function(){}) => funciton xx(){};(a = xx)
+        //    3. 以上の変換は同一スコープの一つの即時実行関数に行えばよい
         const unusedIdentifer = generateUnusedIdentifierName( ast );
 
         estraverse.traverse(
@@ -346,8 +356,14 @@ process.gulp = function( _options ){
     
             if( file.extname === '.js' ){
                 try {
-                    let contents = file.contents.toString( encoding );
-                    file.contents = Buffer.from( process( contents, _options ) );
+                    const contents = Buffer.from( process( file.contents.toString( encoding ), _options ) );
+
+                    if( _options && _options.clone ){
+                        this.push( file.clone( { contents : contents } ) );
+                        file.stem += '.original';
+                    } else {
+                        file.contents = contents;
+                    };
                     this.push( file );
                 } catch(O_o){
                     this.emit( 'error', new PluginError( pluginName, O_o ) );
