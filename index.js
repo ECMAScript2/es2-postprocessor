@@ -45,6 +45,8 @@ const escodegen = (function(){
 
 module.exports = process;
 
+const PROPERTY_FOR_TEST = '__test__';
+
 function process( source, opt_options ){
     const options         = opt_options             || {};
     const minIEVersion    = options.minIEVersion    || 5.5;
@@ -82,11 +84,9 @@ function process( source, opt_options ){
     const ast = esprima.parse( source );
 
     function replaceASTNode( parent, oldNode, newNodeOrNodeList ){
-        let key, index;
-
-        for( key in parent ){
+        for( const key in parent ){
             if( Array.isArray( parent[ key ] ) ){
-                index = parent[ key ].indexOf( oldNode );
+                const index = parent[ key ].indexOf( oldNode );
                 if( 0 <= index ){
                     if( Array.isArray( newNodeOrNodeList ) ){
                         [].splice.apply( parent[ key ], [ index, 1 ].concat( newNodeOrNodeList ) );
@@ -95,6 +95,13 @@ function process( source, opt_options ){
                     };
                     return;
                 };
+            } else if( parent[ key ] === oldNode ){
+                if( Array.isArray( newNodeOrNodeList ) ){
+                    parent[ key ] = { type : esprima.Syntax.BlockStatement, body : newNodeOrNodeList };
+                } else {
+                    parent[ key ] = newNodeOrNodeList;
+                };
+                return;
             };
         };
         console.dir(parent);
@@ -286,17 +293,43 @@ function process( source, opt_options ){
             ast,
             {
                 enter : function( astNode, parent ){
-                    if( astNode.type === esprima.Syntax.FunctionExpression || astNode.type === esprima.Syntax.FunctionDeclaration ){
-                        let lastIIFE, parentOfIIFE, isFunctionDeclarationFound;
-                        // console.log( astNode )
+                    switch( astNode.type ){
+                        case esprima.Syntax.Literal :
+                            if( typeof astNode.value !== 'string' ){
+                                break;
+                            };
+                        case esprima.Syntax.Identifier :
+                        case esprima.Syntax.Property :
+                            astNode[ PROPERTY_FOR_TEST ] = '.';
+                            break;
+                    };
+                }
+            }
+        );
+        estraverse.traverse(
+            ast,
+            {
+                enter : function( rootASTNode, parent ){
+                    if( rootASTNode.type === esprima.Syntax.FunctionExpression || rootASTNode.type === esprima.Syntax.FunctionDeclaration ){
+                        let topASTNodeOfIIFE, parentASTNode, functionExpressionUnderParentheses, isFunctionDeclarationFound;
+                        // console.log( rootASTNode )
                         estraverse.traverse(
-                            astNode.body,
+                            rootASTNode.body,
                             {
                                 enter : function( astNode, parent ){
-                                    if( astNode.type === esprima.Syntax.ExpressionStatement && astNode.expression.type === esprima.Syntax.CallExpression && astNode.expression.callee.type == esprima.Syntax.FunctionExpression ){
-                                        lastIIFE = astNode;
-                                        parentOfIIFE = parent;
-                                        return estraverse.VisitorOption.Skip;
+                                    // IIFE
+                                    if( !functionExpressionUnderParentheses ){
+                                        if( astNode.type === esprima.Syntax.ExpressionStatement && astNode.expression.type === esprima.Syntax.CallExpression && astNode.expression.callee.type == esprima.Syntax.FunctionExpression ){
+                                            parentASTNode = parent;
+                                            topASTNodeOfIIFE = astNode;
+                                            functionExpressionUnderParentheses = astNode.expression.callee;
+                                            return estraverse.VisitorOption.Skip;
+                                        };
+                                        if( astNode.type === esprima.Syntax.FunctionExpression && checkUnderParentheses( this.parents(), astNode ) ){
+                                            parentASTNode = parent;
+                                            functionExpressionUnderParentheses = astNode;
+                                            return estraverse.VisitorOption.Skip;
+                                        };
                                     };
                                     if( astNode.type === esprima.Syntax.FunctionDeclaration ){
                                         isFunctionDeclarationFound = true;
@@ -305,15 +338,30 @@ function process( source, opt_options ){
                                 }
                             }
                         );
-            
-                        if( lastIIFE && !isFunctionDeclarationFound ){
-                            const callExpression = lastIIFE.expression;
-                            const funcExpressionToDeclaration = lastIIFE.expression.callee;
 
-                            callExpression.callee = funcExpressionToDeclaration.id = { type : esprima.Syntax.Identifier, name : unusedIdentifer };
-                            funcExpressionToDeclaration.type = esprima.Syntax.FunctionDeclaration;
-
-                            replaceASTNode( parentOfIIFE, lastIIFE, [ funcExpressionToDeclaration, { type: esprima.Syntax.EmptyStatement }, lastIIFE ] ); // TODO _$ = !0;
+                        if( functionExpressionUnderParentheses && !isFunctionDeclarationFound ){
+                            const funcExpressionToDeclaration = functionExpressionUnderParentheses;
+                                  funcExpressionToDeclaration.id = { type : esprima.Syntax.Identifier, name : unusedIdentifer };
+                                  funcExpressionToDeclaration.type = esprima.Syntax.FunctionDeclaration;
+                            const releaseFunctionDeclaration = {
+                                      type     : esprima.Syntax.AssignmentExpression,
+                                      operator : '=',
+                                      left     : funcExpressionToDeclaration.id,
+                                      right    : { type : esprima.Syntax.Literal, value : false, raw : '!1' }
+                                  };
+                            const empty = { type: esprima.Syntax.EmptyStatement };
+                            if( topASTNodeOfIIFE ){ // IIFE
+                                topASTNodeOfIIFE.expression.callee = funcExpressionToDeclaration.id;
+                                replaceASTNode( parentASTNode, topASTNodeOfIIFE, [ funcExpressionToDeclaration, empty, topASTNodeOfIIFE, releaseFunctionDeclaration ] );
+                            } else {
+                                replaceASTNode( parentASTNode, funcExpressionToDeclaration, funcExpressionToDeclaration.id );
+                                // console.log( parentASTNode );
+                                if( Array.isArray( rootASTNode.body ) ){
+                                    rootASTNode.body.push( funcExpressionToDeclaration, empty, releaseFunctionDeclaration, empty );
+                                } else if( Array.isArray( rootASTNode.body.body ) ){
+                                    rootASTNode.body.body.push( funcExpressionToDeclaration, empty, releaseFunctionDeclaration, empty );
+                                };
+                            };
                         };
                     };
                 }
@@ -372,6 +420,31 @@ process.gulp = function( _options ){
             callback();
         }
     );
+};
+// FunctionExpression が見つかった場合に、これが () で囲まれるならば、コードを変換する
+// 親を辿っていき、Statement に出会ったらやめる
+// escodegen にかけて () が出現するか？調べる
+// CallExpression の param の下にいる場合、workaround は不要
+function checkUnderParentheses( parents, astNodeFrom ){
+    astNodeFrom[ PROPERTY_FOR_TEST ] = 'FUNCTION';
+
+    for( let i = 0, l = parents.length; i < l; ++i ){
+        const parentASTNode = parents[ l - i - 1 ];
+
+        if( [ esprima.Syntax.FunctionDeclaration, esprima.Syntax.FunctionExpression, esprima.Syntax.ForInStatement ,
+              esprima.Syntax.ForStatement       , esprima.Syntax.WhileStatement    , esprima.Syntax.SwitchStatement,
+              esprima.Syntax.DoWhileStatement   , esprima.Syntax.ReturnStatement   , esprima.Syntax.IfStatement,
+              esprima.Syntax.SwitchCase         , esprima.Syntax.CallExpression
+            ].indexOf( parentASTNode.type ) !== -1
+        ){
+            break;
+        };
+        astNodeFrom = parentASTNode
+    };
+    const result = escodegen.generate( astNodeFrom, { verbatim : PROPERTY_FOR_TEST } );
+    //console.log( childASTNode );
+    //console.log( result );
+    return result.indexOf( '(' ) !== -1;
 };
 
 function findThisAndArguments( ast ){

@@ -63,6 +63,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 | `minIEVersion`        | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
 | `minOperaVersion`     | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
 | `minGeckoVersion`     | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.8.0.      | `0.9`         |
+| `clone`               | Set to `true` if you want to compare the before and after code.                 | `false`       |
 
 ## ECMAScript3 Syntax Support Table
 
@@ -83,13 +84,13 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ## Bugs in JavaScript implementation
 
-|                                             | Example                              | IE | Opera | Gecko     |
-|:--------------------------------------------|:-------------------------------------|:--:|:-----:|:---------:|
-| Object Literal with Empty String Property   | `{"": ""}`                           | ✔ | 8(*1) | ✔        |
-| IIFE                                        | `function c(){};(function(){c()})()` | ✔ | ✔    | 0.8.1(*2) |
+|                                           | Example                              | IE | Opera | Gecko     |
+|:------------------------------------------|:-------------------------------------|:--:|:-----:|:---------:|
+| Object Literal with Empty String Property | `{"": ""}`                           | ✔ | 8(*1) | ✔        |
+| Function expression under parentheses     | `function c(){};(function(){c()})()` | ✔ | ✔    | 0.8.1(*2) |
 
 1. Throw a Syntax Error. Object Literal with Empty String Property is problematic in Opera 7.x.
-2. Gecko ~0.8.0 has a bug in IIFE. Therefore, es2-postprocessor rewrite for workaround. It can be tested with the "[Javascript 実装状況と深刻なバグ > IIFE](https://itozyun.github.io/web-doc-base/test/javascript-implementation.html#iife)".
+2. Gecko ~0.8.0 has a bug in Function expression under parentheses. Therefore, es2-postprocessor rewrite for workaround. It can be tested with the "[Javascript 実装状況と深刻なバグ > IIFE](https://itozyun.github.io/web-doc-base/test/javascript-implementation.html#iife)".
 
 ### Object Literal with Empty String Property in Opera ~7.2x.
 
@@ -116,13 +117,10 @@ result = generateVerbatimString(verbatim);
 ## Links
 
 1. [es2-postprocessorでOpera8未満、IE5.5未満でも動くJavaScriptを書く](//outcloud.blogspot.com/2022/11/es2-postprocessor.html)
-
-## Author
-
-itozyun, blog:[outcloud.blogspot.com](//outcloud.blogspot.com/)
+2. [エイプリルフール企画などでレガシーブラウザ対応する場合に覚えておきたい最初期のDHTMLブラウザのJavaScriptの罠たちを回避する](//outcloud.blogspot.com/2022/12/support-early-dhtml-browsers.html)
 
 ## License
 
 es2-postprocessor is licensed under MIT license.
 
-(C) 2022 [itozyun](https://github.com/itozyun)
+(C) 2022 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))

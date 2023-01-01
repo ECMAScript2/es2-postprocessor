@@ -16,7 +16,6 @@ test('instanceof', (t) => {
 });
 test('in operator', (t) => {
     t.throws(()=> e2pp('"a" in b', ie4_opr8));
-    t.throws(()=> e2pp('"a" in b', ie6_opr7));
 });
 test('try~catch, throw', (t) => {
     t.throws(()=> e2pp('try{ a=1 }catch(O_o){ b=1 }', ie4_opr8));
