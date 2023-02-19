@@ -61,7 +61,7 @@ function process( source, opt_options ){
     // RegExp Literal
     const CANUSE_REGEXP_LITERAL              = true; // if mobileIE4 !== false
     const CANUSE_REGEXP_LITERAL_HAS_M_FLAG   = 5.5 <= minIEVersion;
-    const CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG = 5 <= minIEVersion;
+    const CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG = 4 <= minIEVersion;
 
     // Object Literal
     const CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY      = 5.5 <= minIEVersion;
@@ -352,7 +352,7 @@ function process( source, opt_options ){
                             const empty = { type: esprima.Syntax.EmptyStatement };
                             if( topASTNodeOfIIFE ){ // IIFE
                                 topASTNodeOfIIFE.expression.callee = funcExpressionToDeclaration.id;
-                                replaceASTNode( parentASTNode, topASTNodeOfIIFE, [ funcExpressionToDeclaration, empty, topASTNodeOfIIFE, releaseFunctionDeclaration ] );
+                                replaceASTNode( parentASTNode, topASTNodeOfIIFE, [ funcExpressionToDeclaration, empty, topASTNodeOfIIFE, releaseFunctionDeclaration, empty ] );
                             } else {
                                 replaceASTNode( parentASTNode, funcExpressionToDeclaration, funcExpressionToDeclaration.id );
                                 // console.log( parentASTNode );

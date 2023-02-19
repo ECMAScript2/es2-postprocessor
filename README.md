@@ -75,7 +75,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 | Labeled Statement Block                     | `a: {break a;}`                      | ✔      | 7.5(*2) | ✔    |
 | Object Literal with Numeric Property        | `{1: 1}`                             | 5.5(*3) | ✔      | ✔    |
 | RegExp Literal                              | `/reg/`                              | ✔      | ✔      | ✔    |
-| RegExp Literal with `i` `g` Flags           | `/reg/ig`                            | 5(*1)   | ✔      | ✔    |
+| RegExp Literal with `i` `g` Flags           | `/reg/ig`                            | ✔      | ✔      | ✔    |
 | RegExp Literal with `m` Flag                | `/reg/m`                             | 5.5(*1) | ✔      | ✔    |
 
 1. Just throw a Syntax Error
@@ -121,6 +121,6 @@ result = generateVerbatimString(verbatim);
 
 ## License
 
-es2-postprocessor is licensed under MIT license.
+es2-postprocessor is licensed under [MIT License](https://opensource.org/licenses/MIT).
 
-(C) 2022 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))
+(C) 2022-2023 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))
