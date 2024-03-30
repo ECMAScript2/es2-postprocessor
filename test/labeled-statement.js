@@ -6,6 +6,10 @@ const ie5_opr70 = {
     minOperaVersion : 7
 };
 
+const ie5 = {
+    minIEVersion : 5
+};
+
 test('Labeled Statement:do~while', (t) => {
     t.is(e2pp('a:{break a}', ie5_opr70), 'do{break;}while(!1);');
 });
@@ -31,7 +35,7 @@ test('Labeled Statement:this+arguments', (t) => {
                 }
             }
         }(this,arguments));
-    `));
+    `, ie5));
 });
 
 test('Labeled Statement:this', (t) => {
@@ -55,7 +59,7 @@ test('Labeled Statement:this', (t) => {
                 }
             }
         }(this));
-    `));
+    `, ie5));
 });
 
 test('Labeled Statement:arguments', (t) => {
@@ -79,7 +83,7 @@ test('Labeled Statement:arguments', (t) => {
                 }
             }
         }(arguments));
-    `));
+    `, ie5));
 });
 
 test('Labeled Statement:Nest', (t) => {
@@ -98,7 +102,7 @@ test('Labeled Statement:Nest', (t) => {
             } while(!1);
             return;
         }());
-    `));
+    `, ie5));
 
     t.is(e2pp(`
         a:{
@@ -128,7 +132,7 @@ test('Labeled Statement:Nest', (t) => {
             };
             (function(){}());
         }());
-    `));
+    `, ie5));
 });
 /*
 test('Labeled Statement:#2', (t) => {
