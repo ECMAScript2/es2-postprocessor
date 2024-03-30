@@ -7,13 +7,17 @@ const ie5_opr70 = {
     minGeckoVersion : 0.6
 };
 
+const ie5 = {
+    minIEVersion : 5
+};
+
 test('hoising 1', (t) => {
     t.is(e2pp(`
         var a;
         var b;
     `, ie5_opr70), e2pp(`
         var a, b;;
-    `));
+    `, ie5));
 });
 
 test('hoising 2', (t) => {
@@ -27,7 +31,7 @@ test('hoising 2', (t) => {
         for( var b in c ){
             d = 10;
         };
-    `));
+    `, ie5));
 });
 
 test('hoising #2', (t) => {
@@ -58,5 +62,19 @@ test('hoising #2', (t) => {
             }());
             zc = !!id;
         }
-    `));
+    `, ie5));
+});
+
+
+test('hoising 3', (t) => {
+    t.is(e2pp(`
+        function _(){};
+        ++g;
+        var a = g+1;
+        var b;
+    `, ie5_opr70), e2pp(`
+        function _(){};
+        ++g;
+        var a = g+1, b;;
+    `, ie5));
 });

@@ -110,6 +110,21 @@ function process( source, opt_options ){
         return source;
     };
 
+    /**
+     * for( var a in b)
+     *      ^^^^^
+     */
+    function isForInLeft( astNode, parent ){
+        return parent.type === esprima.Syntax.ForInStatement && parent.left === astNode;
+    };
+    /**
+     * for( var a=0; a; ++a)
+     *      ^^^^^^^
+     */
+    function isForInit( astNode, parent ){
+        return parent.type === esprima.Syntax.ForStatement && parent.init === astNode;
+    };
+
     if( HOIST ){
         estraverse.traverse(
             ast,
@@ -117,13 +132,14 @@ function process( source, opt_options ){
                 enter : function( rootASTNode, parent ){
                     if( rootASTNode.type === esprima.Syntax.Program || rootASTNode.type === esprima.Syntax.FunctionExpression || rootASTNode.type === esprima.Syntax.FunctionDeclaration ){
                         let numVariableDeclarator = 0;
+                        const root = rootASTNode.type === esprima.Syntax.Program ? rootASTNode : rootASTNode.body;
 
                         estraverse.traverse(
-                            rootASTNode.type === esprima.Syntax.Program ? rootASTNode : rootASTNode.body,
+                            root,
                             {
                                 enter : function( astNode, parent ){
                                     if( astNode.type === esprima.Syntax.VariableDeclaration ){ // var a
-                                        if( !parent || parent.type !== esprima.Syntax.ForInStatement || parent.left !== astNode ){ // for(var a in b)
+                                        if( !parent || ( !isForInLeft( astNode, parent ) && !isForInit( astNode, parent ) ) ){ // for(var a in b)
                                             numVariableDeclarator += astNode.declarations.length;
                                             return estraverse.VisitorOption.Skip;
                                         };
@@ -135,23 +151,45 @@ function process( source, opt_options ){
                             }
                         );
                         if( numVariableDeclarator ){
-                            let firstVariableDeclaration = rootASTNode.body[ 0 ];
+                            let firstVariableDeclaration = root.body[ 0 ];
 
                             if( firstVariableDeclaration.type !== esprima.Syntax.VariableDeclaration || firstVariableDeclaration.kind !== 'var' ){
-                                firstVariableDeclaration = {
-                                    type         : esprima.Syntax.VariableDeclaration,
-                                    declarations : [],
-                                    kind         : 'var'
+                                firstVariableDeclaration = null;
+                                estraverse.traverse(
+                                    root,
+                                    {
+                                        enter : function( astNode, parent ){
+                                            if( astNode.type === esprima.Syntax.VariableDeclaration && astNode.kind === 'var' ){
+                                                firstVariableDeclaration = astNode;
+                                            } else if( astNode.type === esprima.Syntax.FunctionDeclaration ){
+                                                return estraverse.VisitorOption.Skip;
+                                            } else if( astNode.type === esprima.Syntax.ExpressionStatement ){
+                                                return estraverse.VisitorOption.Skip;
+                                            } else if( astNode.type === esprima.Syntax.EmptyStatement ){
+                                                return estraverse.VisitorOption.Skip;
+                                            } else if( astNode === root ){
+                                                return;
+                                            };
+                                            return estraverse.VisitorOption.Break;
+                                        }
+                                    }
+                                );
+                                if( !firstVariableDeclaration ){
+                                    firstVariableDeclaration = {
+                                        type         : esprima.Syntax.VariableDeclaration,
+                                        declarations : [],
+                                        kind         : 'var'
+                                    };
+                                    root.body.unshift( firstVariableDeclaration );
                                 };
-                                rootASTNode.body.unshift( firstVariableDeclaration );
                             };
 
                             estraverse.traverse(
-                                rootASTNode.type === esprima.Syntax.Program ? rootASTNode : rootASTNode.body,
+                                root,
                                 {
                                     enter : function( astNode, parent ){
                                         if( astNode.type === esprima.Syntax.VariableDeclaration && astNode.kind === 'var' ){ // var a
-                                            if( parent.type !== esprima.Syntax.ForInStatement || parent.left !== astNode ){
+                                            if( !isForInLeft( astNode, parent ) && !isForInit( astNode, parent ) ){
                                                 if( firstVariableDeclaration !== astNode ){
                                                     const declarations = astNode.declarations;
                                                     const toAssignment = [];
@@ -161,7 +199,7 @@ function process( source, opt_options ){
     
                                                         firstVariableDeclaration.declarations.push( variableDeclarator );
                                                         if( variableDeclarator.init ){
-                                                            console.log(variableDeclarator)
+                                                            // console.log(variableDeclarator)
                                                             toAssignment.push(
                                                                 {
                                                                     type       : esprima.Syntax.ExpressionStatement,
