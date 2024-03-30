@@ -8,11 +8,11 @@ const ie5_opr70 = {
 };
 
 test('IIFE x1', (t) => {
-    t.is(e2pp('(function(){(function(a,b){})(a,b)})()', ie5_opr70), '(function(){function c(a,b){};c(a,b);(c=!1)}());');
+    t.is(e2pp('(function(){(function(a,b){})(a,b)})()', ie5_opr70), '(function(){function c(a,b){};c(a,b);(c=!1);}());');
 });
 
 test('IIFE x2', (t) => {
-    t.is(e2pp('(function(){(function(a,b){})(a,b);(function(a,b){})(a,b)})()', ie5_opr70), '(function(){function c(a,b){};c(a,b);(c=!1)(function(a,b){}(a,b));}());');
+    t.is(e2pp('(function(){(function(a,b){})(a,b);(function(a,b){})(a,b)})()', ie5_opr70), '(function(){function c(a,b){};c(a,b);(c=!1);(function(a,b){}(a,b));}());');
 });
 
 test('IIFE', (t) => {
