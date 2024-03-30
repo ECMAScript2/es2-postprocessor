@@ -58,6 +58,8 @@ function process( source, opt_options ){
     const CANUSE_IN_OPERATOR             = 5.5 <= minIEVersion;
     const CANUSE_LABELED_STATEMENT_BLOCK = 7.5 <= minOperaVersion;
 
+    const HOIST = options.hoist || !CANUSE_LABELED_STATEMENT_BLOCK;
+
     // RegExp Literal
     const CANUSE_REGEXP_LITERAL              = true; // if mobileIE4 !== false
     const CANUSE_REGEXP_LITERAL_HAS_M_FLAG   = 5.5 <= minIEVersion;
@@ -72,10 +74,6 @@ function process( source, opt_options ){
     const CANUSE_ALL_SYNTAXES = CANUSE_MOST_ES3_SYNTAXES && CANUSE_IN_OPERATOR &&
                                 CANUSE_REGEXP_LITERAL && CANUSE_REGEXP_LITERAL_HAS_M_FLAG && CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG &&
                                 CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY && CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY;
-
-    if( CANUSE_ALL_SYNTAXES && CANUSE_LABELED_STATEMENT_BLOCK && !WORKAROUND_FOR_IIFE_BUG ){
-        return source;
-    };
 
     // Common AST Node
     const ASTNODE_IDENTIFER_THIS      = { type : esprima.Syntax.ThisExpression };
@@ -106,6 +104,98 @@ function process( source, opt_options ){
         };
         console.dir(parent);
         throw new Error( 'Failed to replace AST Node!' );
+    };
+
+    if( !HOIST && CANUSE_ALL_SYNTAXES && CANUSE_LABELED_STATEMENT_BLOCK && !WORKAROUND_FOR_IIFE_BUG ){
+        return source;
+    };
+
+    if( HOIST ){
+        estraverse.traverse(
+            ast,
+            {
+                enter : function( rootASTNode, parent ){
+                    if( rootASTNode.type === esprima.Syntax.Program || rootASTNode.type === esprima.Syntax.FunctionExpression || rootASTNode.type === esprima.Syntax.FunctionDeclaration ){
+                        let numVariableDeclarator = 0;
+
+                        estraverse.traverse(
+                            rootASTNode.type === esprima.Syntax.Program ? rootASTNode : rootASTNode.body,
+                            {
+                                enter : function( astNode, parent ){
+                                    if( astNode.type === esprima.Syntax.VariableDeclaration ){ // var a
+                                        if( !parent || parent.type !== esprima.Syntax.ForInStatement || parent.left !== astNode ){ // for(var a in b)
+                                            numVariableDeclarator += astNode.declarations.length;
+                                            return estraverse.VisitorOption.Skip;
+                                        };
+                                    };
+                                    if( astNode.type === esprima.Syntax.FunctionExpression || astNode.type === esprima.Syntax.FunctionDeclaration ){
+                                        return estraverse.VisitorOption.Skip;
+                                    };
+                                }
+                            }
+                        );
+                        if( numVariableDeclarator ){
+                            let firstVariableDeclaration = rootASTNode.body[ 0 ];
+
+                            if( firstVariableDeclaration.type !== esprima.Syntax.VariableDeclaration || firstVariableDeclaration.kind !== 'var' ){
+                                firstVariableDeclaration = {
+                                    type         : esprima.Syntax.VariableDeclaration,
+                                    declarations : [],
+                                    kind         : 'var'
+                                };
+                                rootASTNode.body.unshift( firstVariableDeclaration );
+                            };
+
+                            estraverse.traverse(
+                                rootASTNode.type === esprima.Syntax.Program ? rootASTNode : rootASTNode.body,
+                                {
+                                    enter : function( astNode, parent ){
+                                        if( astNode.type === esprima.Syntax.VariableDeclaration && astNode.kind === 'var' ){ // var a
+                                            if( parent.type !== esprima.Syntax.ForInStatement || parent.left !== astNode ){
+                                                if( firstVariableDeclaration !== astNode ){
+                                                    const declarations = astNode.declarations;
+                                                    const toAssignment = [];
+    
+                                                    while( declarations.length ){
+                                                        const variableDeclarator = declarations.shift();
+    
+                                                        firstVariableDeclaration.declarations.push( variableDeclarator );
+                                                        if( variableDeclarator.init ){
+                                                            console.log(variableDeclarator)
+                                                            toAssignment.push(
+                                                                {
+                                                                    type       : esprima.Syntax.ExpressionStatement,
+                                                                    expression : {
+                                                                        type     : esprima.Syntax.AssignmentExpression,
+                                                                        operator : '=',
+                                                                        left     : variableDeclarator.id,
+                                                                        right    : variableDeclarator.init
+                                                                    }
+                                                                }
+                                                            );
+                                                            variableDeclarator.init = null
+                                                        };
+                                                    };
+                                                    if( toAssignment.length ){
+                                                        replaceASTNode( parent, astNode, toAssignment );
+                                                    } else {
+                                                        replaceASTNode( parent, astNode, { type : esprima.Syntax.EmptyStatement } );
+                                                    };
+                                                };
+                                                return estraverse.VisitorOption.Skip;
+                                            };
+                                        };
+                                        if( astNode.type === esprima.Syntax.FunctionExpression || astNode.type === esprima.Syntax.FunctionDeclaration ){
+                                            return estraverse.VisitorOption.Skip;
+                                        };
+                                    }
+                                }
+                            );
+                        };
+                    };
+                }
+            }
+        );
     };
 
     if( !CANUSE_ALL_SYNTAXES ){
