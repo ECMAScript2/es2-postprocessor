@@ -69,11 +69,11 @@ function process( source, opt_options ){
 
     const WORKAROUND_FOR_IIFE_BUG = minGeckoVersion < 0.9; // < 0.8.1
 
-    const CANUSE_ALL_SYNTAXES = CANUSE_MOST_ES3_SYNTAXES && CANUSE_IN_OPERATOR && CANUSE_LABELED_STATEMENT_BLOCK &&
-        CANUSE_REGEXP_LITERAL && CANUSE_REGEXP_LITERAL_HAS_M_FLAG && CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG &&
-        CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY && CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY;
+    const CANUSE_ALL_SYNTAXES = CANUSE_MOST_ES3_SYNTAXES && CANUSE_IN_OPERATOR &&
+                                CANUSE_REGEXP_LITERAL && CANUSE_REGEXP_LITERAL_HAS_M_FLAG && CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG &&
+                                CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY && CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY;
 
-    if( CANUSE_ALL_SYNTAXES && !WORKAROUND_FOR_IIFE_BUG ){
+    if( CANUSE_ALL_SYNTAXES && CANUSE_LABELED_STATEMENT_BLOCK && !WORKAROUND_FOR_IIFE_BUG ){
         return source;
     };
 
@@ -108,53 +108,74 @@ function process( source, opt_options ){
         throw new Error( 'Failed to replace AST Node!' );
     };
 
-    !CANUSE_ALL_SYNTAXES &&
-    estraverse.traverse(
-        ast,
-        {
-            enter : function( astNode, parent ){
-                const parents = this.parents();
-                let pointer = 0, inLoopOrSwitch;
+    if( !CANUSE_ALL_SYNTAXES ){
+        estraverse.traverse(
+            ast,
+            {
+                enter : function( astNode, parent ){
+                    if( !CANUSE_MOST_ES3_SYNTAXES ){
+                        if( astNode.type === esprima.Syntax.BinaryExpression && astNode.operator === 'instanceof' ){
+                            throw new SyntaxError( '`instanceof` operator uses!' );
+                        };
+                        if( astNode.type === esprima.Syntax.TryStatement ){
+                            throw new SyntaxError( '`try ~ catch` statements uses!' );
+                        };
+                        if( astNode.type === esprima.Syntax.ThrowStatement ){
+                            throw new SyntaxError( '`throw` statements uses!' );
+                        };
+                    };
+                    if( !CANUSE_IN_OPERATOR ){
+                        if( astNode.type === esprima.Syntax.BinaryExpression && astNode.operator === 'in' ){
+                            throw new SyntaxError( '`in` operator uses!' );
+                        };
+                    };
 
-                function getParentASTNode(){
-                    ++pointer;
-                    return parents[ parents.length - pointer ];
-                };
+                    if( !CANUSE_REGEXP_LITERAL ){
+                        if( astNode.type === esprima.Syntax.Literal && astNode.regex ){
+                            throw new SyntaxError( 'RegExp Literal uses! ' + astNode.raw );
+                        };
+                    };
+                    if( !CANUSE_REGEXP_LITERAL_HAS_M_FLAG ){
+                        if( astNode.type === esprima.Syntax.Literal && astNode.regex && astNode.regex.flags.match( /m/ ) ){
+                            throw new SyntaxError( 'RegExp Literal with `m` flag! ' + astNode.raw );
+                        };
+                    };
+                    if( !CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG ){
+                        if( astNode.type === esprima.Syntax.Literal && astNode.regex && astNode.regex.flags.match( /(i|g)/ ) ){
+                            throw new SyntaxError( 'RegExp Literal with `i` `g` flag! ' + astNode.raw );
+                        };
+                    };
+                    if( parent && parent.type === esprima.Syntax.ObjectExpression ){
+                        if( typeof astNode.key.value === 'number' ){
+                            if( !CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY ){
+                                // To Numeric String Property : fallback for IE5-
+                                astNode.key.value = '' + astNode.key.value;
+                                astNode.key.raw   = '"' + astNode.key.value + '"';
+                            };
+                        } else if( astNode.key.value === '' ){
+                            if( !CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY ){
+                                throw new SyntaxError( 'Object Literal with Empty String Property!' );
+                            };
+                        };
+                    };
+                }
+            }
+        );
+    };
 
-                if( !CANUSE_MOST_ES3_SYNTAXES ){
-                    if( astNode.type === esprima.Syntax.BinaryExpression && astNode.operator === 'instanceof' ){
-                        throw new SyntaxError( '`instanceof` operator uses!' );
+    if( !CANUSE_LABELED_STATEMENT_BLOCK ){
+        estraverse.traverse(
+            ast,
+            {
+                enter : function( astNode, parent ){
+                    const parents = this.parents();
+                    let pointer = 0, inLoopOrSwitch;
+    
+                    function getParentASTNode(){
+                        ++pointer;
+                        return parents[ parents.length - pointer ];
                     };
-                    if( astNode.type === esprima.Syntax.TryStatement ){
-                        throw new SyntaxError( '`try ~ catch` statements uses!' );
-                    };
-                    if( astNode.type === esprima.Syntax.ThrowStatement ){
-                        throw new SyntaxError( '`throw` statements uses!' );
-                    };
-                };
-                if( !CANUSE_IN_OPERATOR ){
-                    if( astNode.type === esprima.Syntax.BinaryExpression && astNode.operator === 'in' ){
-                        throw new SyntaxError( '`in` operator uses!' );
-                    };
-                };
 
-                if( !CANUSE_REGEXP_LITERAL ){
-                    if( astNode.type === esprima.Syntax.Literal && astNode.regex ){
-                        throw new SyntaxError( 'RegExp Literal uses! ' + astNode.raw );
-                    };
-                };
-                if( !CANUSE_REGEXP_LITERAL_HAS_M_FLAG ){
-                    if( astNode.type === esprima.Syntax.Literal && astNode.regex && astNode.regex.flags.match( /m/ ) ){
-                        throw new SyntaxError( 'RegExp Literal with `m` flag! ' + astNode.raw );
-                    };
-                };
-                if( !CANUSE_REGEXP_LITERAL_HAS_G_I_FLAG ){
-                    if( astNode.type === esprima.Syntax.Literal && astNode.regex && astNode.regex.flags.match( /(i|g)/ ) ){
-                        throw new SyntaxError( 'RegExp Literal with `i` `g` flag! ' + astNode.raw );
-                    };
-                };
-
-                if( !CANUSE_LABELED_STATEMENT_BLOCK ){
                     if( astNode.type === esprima.Syntax.LabeledStatement ){
                         // continue 不可, ただし ループに出会ったら探索しない
                         findInconvenientASTNode(
@@ -262,24 +283,10 @@ function process( source, opt_options ){
                             };
                         };
                     };
-                };
-
-                if( parent && parent.type === esprima.Syntax.ObjectExpression ){
-                    if( typeof astNode.key.value === 'number' ){
-                        if( !CANUSE_OBJECT_LITERAL_WITH_NUMERIC_PROPERTY ){
-                            // To Numeric String Property : fallback for IE5-
-                            astNode.key.value = '' + astNode.key.value;
-                            astNode.key.raw   = '"' + astNode.key.value + '"';
-                        };
-                    } else if( astNode.key.value === '' ){
-                        if( !CANUSE_OBJECT_LITERAL_WITH_EMPTY_STRING_PROPERTY ){
-                            throw new SyntaxError( 'Object Literal with Empty String Property!' );
-                        };
-                    };
-                };
+                }
             }
-        }
-    );
+        );
+    };
 
     if( WORKAROUND_FOR_IIFE_BUG ){
         // 1. 同一スコープ内の、即時実行関数と関数の存否確認
