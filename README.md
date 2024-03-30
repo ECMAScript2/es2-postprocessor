@@ -58,12 +58,15 @@ gulp.task('post_process_for_ie5_and_opera7',
 
 ### Options
 
-| Property              | Description                                                                     | Default value |
-|:----------------------|:--------------------------------------------------------------------------------|--------------:|
-| `minIEVersion`        | Set to `4` if you want to fix syntax errors or warnings that occurs in IE4.     | `5.5`         |
-| `minOperaVersion`     | Set to `7` if you want to fix syntax errors or warnings that occurs in Opera 7. | `8.0`         |
-| `minGeckoVersion`     | Set to `0.6` if you want to work around a bug that occurs in Gecko ~0.8.0.      | `0.9`         |
-| `clone`               | Set to `true` if you want to compare the before and after code.                 | `false`       |
+| Property              | Description                                                         | Default value |
+|:----------------------|:--------------------------------------------------------------------|--------------:|
+| `minIEVersion`        | Set `4` to fix syntax errors or warnings that occurs in IE4.        | `5.5`         |
+| `minOperaVersion`     | Set `7` to fix syntax errors or warnings that occurs in Opera 7.    | `8.0`         |
+| `minGeckoVersion`     | Set `0.6` to work around a bug that occurs in Gecko ~0.8.0.         | `0.9`         |
+| `clone`               | Set `true` to compare the before and after code.                    | `false`       |
+| `hoist`(*1)           | Set `true` to move variable declarations to the beginning of scope. | `false`       |
+
+1. If `hoist` is `false` but `minOperaVersion` is less than 7.5, move variable declarations to the beginning of scope. See [#2 When there is a var declaration inside a labeled statement block, it fails to release](https://github.com/ECMAScript2/es2-postprocessor/issues/2)
 
 ## ECMAScript3 Syntax Support Table
 
@@ -123,4 +126,4 @@ result = generateVerbatimString(verbatim);
 
 es2-postprocessor is licensed under [MIT License](https://opensource.org/licenses/MIT).
 
-(C) 2022-2023 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))
+(C) 2022-2024 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))
