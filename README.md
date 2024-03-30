@@ -44,7 +44,7 @@ gulp.task('post_process_for_ie5_and_opera7',
                    .pipe(
                        require('google-closure-compiler').gulp()(
                            {
-                               compilation_level : 'WHITESPACE_ONLY', // Prevent replacing labeled blocks.
+                               compilation_level : 'WHITESPACE_ONLY', // Prevent replacing to labeled statement blocks.
                                formatting        : 'PRETTY_PRINT', // or 'SINGLE_QUOTES'
                                js_output_file    : 'main.es2.js'
                            }
@@ -66,7 +66,9 @@ gulp.task('post_process_for_ie5_and_opera7',
 | `clone`               | Set `true` to compare the before and after code.                    | `false`       |
 | `hoist`(*1)           | Set `true` to move variable declarations to the beginning of scope. | `false`       |
 
-1. If `hoist` is `false` but `minOperaVersion` is less than 7.5, move variable declarations to the beginning of scope. See [#2 When there is a var declaration inside a labeled statement block, it fails to release](https://github.com/ECMAScript2/es2-postprocessor/issues/2)
+1. If `hoist` is `false` but `minOperaVersion` is less than 7.5, move variable declarations to the beginning of scope.
+   * [#2 When there is a var declaration inside a labeled statement block, it fails to workaround](https://github.com/ECMAScript2/es2-postprocessor/issues/2)
+   * [MDN / Hoisting](https://developer.mozilla.org/en-US/docs/Glossary/Hoisting)
 
 ## ECMAScript3 Syntax Support Table
 
