@@ -142,18 +142,51 @@ test('Labeled Statement:Nest', (t) => {
         }());
     `, ie5));
 });
-/*
+
 test('Labeled Statement:#2', (t) => {
     t.is(e2pp(`
-    a:{
-        for (var b in c) {
-            var a = !0;
-            break a;
-        };
-    }
-    _ = !!a;
-    `, ie5_opr70), 'var a;(function(){for(var b in c){a=!0;return;}}());_=!!a');
-}); */
+        a:{
+            for (var b in c) {
+                var a = !0;
+                break a;
+            };
+        }
+        _ = !!a;
+    `, ie5_opr70), e2pp(`
+        var a;
+        (function(){
+            for (var b in c) {
+                a = !0;
+                return;
+            };
+        }());
+        _=!!a
+    `, ie5));
+});
+
+test('Labeled Statement:#4', (t) => {
+    t.is(e2pp(`
+        a:{
+            switch(b){
+                case 1:
+                    switch(c){
+                        case 1:
+                            break a;
+                    };
+            };
+        }
+    `, ie5_opr70), e2pp(`
+        (function(){
+            switch(b){
+                case 1:
+                    switch(c){
+                        case 1:
+                            return;
+                    };
+            };
+        }());
+    `, ie5));
+});
 
 test('Labeled Statement:Error', (t) => {
     t.throws(()=> e2pp('a:{continue}', ie5_opr70));
