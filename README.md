@@ -63,8 +63,9 @@ gulp.task('post_process_for_ie5_and_opera7',
 | `minIEVersion`        | Set `4` to fix syntax errors or warnings that occurs in IE4.        | `5.5`         |
 | `minOperaVersion`     | Set `7` to fix syntax errors or warnings that occurs in Opera 7.    | `8.0`         |
 | `minGeckoVersion`     | Set `0.6` to work around a bug that occurs in Gecko ~0.8.0.         | `0.9`         |
-| `clone`               | Set `true` to compare the before and after code.                    | `false`       |
 | `hoist`(*1)           | Set `true` to move variable declarations to the beginning of scope. | `false`       |
+| `clone`               | Set `true` to compare the before and after code.(for gulp)          | `false`       |
+
 
 1. If `hoist` is `false` but `minOperaVersion` is less than 7.5, move variable declarations to the beginning of scope.
    * [#2 When there is a var declaration inside a labeled statement block, it fails to workaround](https://github.com/ECMAScript2/es2-postprocessor/issues/2)
@@ -97,7 +98,7 @@ gulp.task('post_process_for_ie5_and_opera7',
 1. Throw a Syntax Error. Object Literal with Empty String Property is problematic in Opera 7.x.
 2. Gecko ~0.8.0 has a bug in Function expression under parentheses. Therefore, es2-postprocessor rewrite for workaround. It can be tested with the "[Javascript 実装状況と深刻なバグ > IIFE](https://itozyun.github.io/web-doc-base/test/javascript-implementation.html#iife)".
 
-### Object Literal with Empty String Property in Opera ~7.2x.
+### Object Literal with Empty String Property in Opera ~7.x
 
 ~~~js
 obj = {"":"Good!"} //  Object Literal
@@ -128,4 +129,4 @@ result = generateVerbatimString(verbatim);
 
 es2-postprocessor is licensed under [MIT License](https://opensource.org/licenses/MIT).
 
-(C) 2022-2024 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))
+(C) 2022-2025 [itozyun](https://github.com/itozyun)([outcloud.blogspot.com](//outcloud.blogspot.com/))
