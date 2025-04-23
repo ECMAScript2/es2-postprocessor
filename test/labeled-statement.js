@@ -11,7 +11,15 @@ const ie5 = {
 };
 
 test('Labeled Statement:do~while', (t) => {
-    t.is(e2pp('a:{break a}', ie5_opr70), 'do{break;}while(!1);');
+    t.is(e2pp(`
+        a:{
+            break a
+        }
+    `, ie5_opr70), e2pp(`
+        do{
+            break;
+        }while(!1);
+    `, ie5));
 });
 
 test('Labeled Statement:this+arguments', (t) => {
