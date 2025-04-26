@@ -4,6 +4,7 @@ const estraverse = require( 'estraverse' );
 module.exports = {};
 
 module.exports.replaceASTNode = replaceASTNode;
+module.exports.removeASTNode = removeASTNode;
 module.exports.generateUnusedIdentifierName = generateUnusedIdentifierName;
 
 function replaceASTNode( parent, oldNode, newNodeOrNodeList ){
@@ -24,6 +25,23 @@ function replaceASTNode( parent, oldNode, newNodeOrNodeList ){
             } else {
                 parent[ key ] = newNodeOrNodeList;
             };
+            return;
+        };
+    };
+    console.dir(parent);
+    throw new Error( 'Failed to replace AST Node!' );
+};
+
+function removeASTNode( parent, oldNode ){
+    for( const key in parent ){
+        if( Array.isArray( parent[ key ] ) ){
+            const index = parent[ key ].indexOf( oldNode );
+            if( 0 <= index ){
+                parent[ key ].splice( index, 1 );
+                return;
+            };
+        } else if( parent[ key ] === oldNode ){
+            parent[ key ] = null;
             return;
         };
     };

@@ -6,7 +6,7 @@ const ie5_opr70 = {
     minOperaVersion : 7
 };
 
-const ie5 = {
+const flat = {
     minIEVersion : 5
 };
 
@@ -19,7 +19,7 @@ test('Labeled Statement:do~while', (t) => {
         do{
             break;
         }while(!1);
-    `, ie5));
+    `, flat));
 });
 
 test('Labeled Statement:this+arguments', (t) => {
@@ -43,7 +43,7 @@ test('Labeled Statement:this+arguments', (t) => {
                 }
             }
         }(this,arguments));
-    `, ie5));
+    `, flat));
 });
 
 test('Labeled Statement:this', (t) => {
@@ -67,7 +67,7 @@ test('Labeled Statement:this', (t) => {
                 }
             }
         }(this));
-    `, ie5));
+    `, flat));
 });
 
 test('Labeled Statement:arguments', (t) => {
@@ -91,7 +91,7 @@ test('Labeled Statement:arguments', (t) => {
                 }
             }
         }(arguments));
-    `, ie5));
+    `, flat));
 });
 
 test('Labeled Statement:Nest', (t) => {
@@ -110,7 +110,7 @@ test('Labeled Statement:Nest', (t) => {
             } while(!1);
             return;
         }());
-    `, ie5));
+    `, flat));
 
     t.is(e2pp(`
         a:{
@@ -140,28 +140,47 @@ test('Labeled Statement:Nest', (t) => {
             };
             (function(){}());
         }());
-    `, ie5));
+    `, flat));
 });
 
 test('Labeled Statement:#2', (t) => {
     t.is(e2pp(`
+        a:{
+            for (var a in c) {
+                var b = !0;
+                break a;
+            };
+        }
+        _ = !!b;
+    `, ie5_opr70), e2pp(`
+        var a, b;
+        (function(){
+            for (a in c) {
+                b = !0;
+                return;
+            };
+        }());
+        _=!!b
+    `, flat));
+
+    /* t.is(e2pp(`
         a:{
             for (var b in c) {
                 var a = !0;
                 break a;
             };
         }
-        _ = !!a;
+        _ = a + b;
     `, ie5_opr70), e2pp(`
-        var a;
+        var a, b;
         (function(){
-            for (var b in c) {
+            for (b in c) {
                 a = !0;
                 return;
             };
         }());
-        _=!!a
-    `, ie5));
+        _ = a + b;
+    `, flat)); */
 });
 
 test('Labeled Statement:#4', (t) => {
@@ -185,7 +204,7 @@ test('Labeled Statement:#4', (t) => {
                     };
             };
         }());
-    `, ie5));
+    `, flat));
 });
 
 test('Labeled Statement:Error', (t) => {
